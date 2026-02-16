@@ -198,41 +198,64 @@ def documents() -> Any:
     type_filter = request.args.get("type", "all")
     process_filter = request.args.get("process", "all")
     q = request.args.get("q", "").strip()
+    page = request.args.get("page", "1").strip()
+    try:
+        page_number = max(int(page), 1)
+    except ValueError:
+        page_number = 1
+    page_size = 10
 
-    query = "SELECT * FROM documents WHERE 1=1"
+    where_clause = " WHERE 1=1"
     params: list[Any] = []
 
     if status_filter == "on_circulation":
-        query += " AND approved = 0"
+        where_clause += " AND approved = 0"
     elif status_filter == "approved_not_scanned":
-        query += " AND approved = 1 AND scanned = 0"
+        where_clause += " AND approved = 1 AND scanned = 0"
     elif status_filter == "completed":
-        query += " AND approved = 1 AND scanned = 1"
+        where_clause += " AND approved = 1 AND scanned = 1"
 
     if type_filter != "all":
-        query += " AND type = ?"
+        where_clause += " AND type = ?"
         params.append(type_filter)
 
     if process_filter != "all":
-        query += " AND process = ?"
+        where_clause += " AND process = ?"
         params.append(process_filter)
 
     if q:
-        query += " AND (doc_no LIKE ? OR title LIKE ?)"
+        where_clause += " AND (doc_no LIKE ? OR title LIKE ?)"
         params.extend([f"%{q}%", f"%{q}%"])
 
-    query += " ORDER BY created_at DESC, id DESC"
+    db = get_db()
+    count_query = f"SELECT COUNT(*) AS count FROM documents{where_clause}"
+    total_docs = db.execute(count_query, params).fetchone()["count"]
+    total_pages = max((total_docs + page_size - 1) // page_size, 1)
+    page_number = min(page_number, total_pages)
 
-    docs = get_db().execute(query, params).fetchall()
+    offset = (page_number - 1) * page_size
+    query = f"SELECT * FROM documents{where_clause} ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?"
+    docs = db.execute(query, [*params, page_size, offset]).fetchall()
+
+    existing_doc_nos = [
+        row["doc_no"]
+        for row in db.execute("SELECT doc_no FROM documents").fetchall()
+    ]
+
     return render_template(
         "documents.html",
         docs=docs,
+        existing_doc_nos=existing_doc_nos,
         type_options=TYPE_OPTIONS,
         process_options=PROCESS_OPTIONS,
         status_filter=status_filter,
         type_filter=type_filter,
         process_filter=process_filter,
         q=q,
+        page_number=page_number,
+        total_pages=total_pages,
+        page_size=page_size,
+        total_docs=total_docs,
         days_since=days_since,
     )
 
