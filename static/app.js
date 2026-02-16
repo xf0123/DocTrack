@@ -64,6 +64,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const linkPathRows = document.querySelectorAll(".js-link-path-row");
   const linkPathViewer = document.getElementById("linkPathViewer");
+  const copyLinkPathBtn = document.getElementById("copyLinkPathBtn");
   linkPathRows.forEach((row) => {
     row.addEventListener("click", (event) => {
       if (!linkPathViewer) return;
@@ -80,6 +81,23 @@ document.addEventListener("DOMContentLoaded", () => {
       linkPathViewer.value = path;
     });
   });
+
+  if (copyLinkPathBtn && linkPathViewer) {
+    copyLinkPathBtn.addEventListener("click", async () => {
+      const path = linkPathViewer.value.trim();
+      if (!path) return;
+
+      await navigator.clipboard.writeText(path);
+      const originalText = copyLinkPathBtn.textContent;
+      copyLinkPathBtn.textContent = "Copied!";
+      copyLinkPathBtn.disabled = true;
+
+      setTimeout(() => {
+        copyLinkPathBtn.textContent = originalText;
+        copyLinkPathBtn.disabled = false;
+      }, 1200);
+    });
+  }
 
   const addDocumentForm = document.getElementById("addDocumentForm");
   const singleCheckboxes = document.querySelectorAll(".js-single-checkbox");
