@@ -6,11 +6,11 @@
   <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDocumentModal">Add New Document</button>
 </div>
 
-<form class="card card-body mb-3" method="get">
+<form class="card card-body mb-3" method="get" id="documentsFilterForm">
   <div class="row g-2">
     <div class="col-md-3">
       <label class="form-label">Status</label>
-      <select class="form-select" name="status">
+      <select class="form-select" name="status" id="statusFilter">
         <option value="all" {{ 'selected' if status_filter == 'all' else '' }}>All</option>
         <option value="on_circulation" {{ 'selected' if status_filter == 'on_circulation' else '' }}>On circulation</option>
         <option value="approved_not_scanned" {{ 'selected' if status_filter == 'approved_not_scanned' else '' }}>Approved not scanned</option>
@@ -19,24 +19,24 @@
     </div>
     <div class="col-md-2">
       <label class="form-label">Type</label>
-      <select class="form-select" name="type">
+      <select class="form-select" name="type" id="typeFilter">
         <option value="all">All</option>
         {% for t in type_options %}<option value="{{ t }}" {{ 'selected' if type_filter == t else '' }}>{{ t }}</option>{% endfor %}
       </select>
     </div>
     <div class="col-md-2">
       <label class="form-label">Process</label>
-      <select class="form-select" name="process">
+      <select class="form-select" name="process" id="processFilter">
         <option value="all">All</option>
         {% for p in process_options %}<option value="{{ p }}" {{ 'selected' if process_filter == p else '' }}>{{ p }}</option>{% endfor %}
       </select>
     </div>
     <div class="col-md-3">
       <label class="form-label">Search</label>
-      <input class="form-control" type="text" name="q" value="{{ q }}" placeholder="Doc no or title" />
+      <input class="form-control" type="text" name="q" id="searchFilter" value="{{ q }}" placeholder="Doc no or title" />
     </div>
     <div class="col-md-2 d-grid align-self-end">
-      <button class="btn btn-outline-secondary" type="submit">Apply Filter</button>
+      <button class="btn btn-outline-secondary" type="button" id="clearFiltersBtn">Clear Filters</button>
     </div>
   </div>
 </form>
@@ -114,22 +114,32 @@
 
 <div class="modal fade" id="addDocumentModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
-    <form class="modal-content" method="post" action="{{ url_for('add_document') }}">
+    <form class="modal-content" method="post" action="{{ url_for('add_document') }}" id="addDocumentForm" data-doc-nos='{{ docs | map(attribute="doc_no") | list | tojson }}'>
       <div class="modal-header"><h2 class="h5 modal-title">Add New Document</h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body d-grid gap-3">
         <div>
           <label class="form-label">Type *</label>
-          <select class="form-select" name="type" required>
-            <option value="">Select type</option>
-            {% for t in type_options %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
-          </select>
+          <div class="d-grid gap-2">
+            {% for t in type_options %}
+            <div class="form-check">
+              <input class="form-check-input js-single-checkbox" type="checkbox" data-group="type" id="type-{{ loop.index }}" value="{{ t }}">
+              <label class="form-check-label" for="type-{{ loop.index }}">{{ t }}</label>
+            </div>
+            {% endfor %}
+          </div>
+          <input type="hidden" name="type" id="selectedType" required>
         </div>
         <div>
           <label class="form-label">Process *</label>
-          <select class="form-select" name="process" required>
-            <option value="">Select process</option>
-            {% for p in process_options %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
-          </select>
+          <div class="d-grid gap-2">
+            {% for p in process_options %}
+            <div class="form-check">
+              <input class="form-check-input js-single-checkbox" type="checkbox" data-group="process" id="process-{{ loop.index }}" value="{{ p }}">
+              <label class="form-check-label" for="process-{{ loop.index }}">{{ p }}</label>
+            </div>
+            {% endfor %}
+          </div>
+          <input type="hidden" name="process" id="selectedProcess" required>
         </div>
         <div>
           <label class="form-label">Doc No *</label>
