@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Documents</h1>
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDocumentModal">Add New Document</button>
+</div>
+
+<form class="card card-body mb-3" method="get">
+  <div class="row g-2">
+    <div class="col-md-3">
+      <label class="form-label">Status</label>
+      <select class="form-select" name="status">
+        <option value="all" {{ 'selected' if status_filter == 'all' else '' }}>All</option>
+        <option value="on_circulation" {{ 'selected' if status_filter == 'on_circulation' else '' }}>On circulation</option>
+        <option value="approved_not_scanned" {{ 'selected' if status_filter == 'approved_not_scanned' else '' }}>Approved not scanned</option>
+        <option value="completed" {{ 'selected' if status_filter == 'completed' else '' }}>Completed</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Type</label>
+      <select class="form-select" name="type">
+        <option value="all">All</option>
+        {% for t in type_options %}<option value="{{ t }}" {{ 'selected' if type_filter == t else '' }}>{{ t }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Process</label>
+      <select class="form-select" name="process">
+        <option value="all">All</option>
+        {% for p in process_options %}<option value="{{ p }}" {{ 'selected' if process_filter == p else '' }}>{{ p }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Search</label>
+      <input class="form-control" type="text" name="q" value="{{ q }}" placeholder="Doc no or title" />
+    </div>
+    <div class="col-md-2 d-grid align-self-end">
+      <button class="btn btn-outline-secondary" type="submit">Apply Filter</button>
+    </div>
+  </div>
+</form>
+
+<div class="table-responsive">
+  <table class="table table-hover align-middle">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Type</th>
+        <th>Process</th>
+        <th>Doc No</th>
+        <th>Title</th>
+        <th>Approved</th>
+        <th>Scanned</th>
+        <th>Duration (days)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in docs %}
+      <tr>
+        <td>{{ d['id'] }}</td>
+        <td>{{ d['type'] }}</td>
+        <td>{{ d['process'] }}</td>
+        <td>{{ d['doc_no'] }}</td>
+        <td>{{ d['title'] }}</td>
+        <td>
+          {% if d['approved'] %}
+            <span class="badge text-bg-success">Yes</span>
+            <div class="small text-body-secondary">{{ format_date(d['approved_date']) }} by {{ d['approved_by'] }}</div>
+          {% else %}
+            <button
+              class="btn btn-sm btn-outline-primary js-status-btn"
+              data-action-url="{{ url_for('approve_document', doc_id=d['id']) }}"
+              data-label="Approve"
+              data-bs-toggle="modal"
+              data-bs-target="#statusModal"
+            >Set Yes</button>
+            <span class="badge text-bg-secondary">No</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if d['scanned'] %}
+            <span class="badge text-bg-success">Yes</span>
+            <div class="small text-body-secondary">{{ format_date(d['scanned_date']) }} by {{ d['scanned_by'] }}</div>
+          {% elif d['approved'] %}
+            <button
+              class="btn btn-sm btn-outline-primary js-status-btn"
+              data-action-url="{{ url_for('scan_document', doc_id=d['id']) }}"
+              data-label="Mark as Scanned"
+              data-bs-toggle="modal"
+              data-bs-target="#statusModal"
+            >Set Yes</button>
+            <span class="badge text-bg-secondary">No</span>
+          {% else %}
+            <span class="badge text-bg-secondary">No</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if d['approved'] and not d['scanned'] %}
+            {{ days_since(d['approved_date']) }}
+          {% elif not d['approved'] %}
+            {{ days_since(d['created_at']) }}
+          {% else %}
+            -
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="text-center text-body-secondary">No documents found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="modal fade" id="addDocumentModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" method="post" action="{{ url_for('add_document') }}">
+      <div class="modal-header"><h2 class="h5 modal-title">Add New Document</h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body d-grid gap-3">
+        <div>
+          <label class="form-label">Type *</label>
+          <select class="form-select" name="type" required>
+            <option value="">Select type</option>
+            {% for t in type_options %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Process *</label>
+          <select class="form-select" name="process" required>
+            <option value="">Select process</option>
+            {% for p in process_options %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label">Doc No *</label>
+          <textarea class="form-control" name="doc_no" rows="2" required></textarea>
+        </div>
+        <div>
+          <label class="form-label">Title *</label>
+          <textarea class="form-control" name="title" rows="2" required></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" type="submit">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" method="post" id="statusForm">
+      <div class="modal-header"><h2 class="h5 modal-title" id="statusModalLabel">Update Status</h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <label class="form-label">Date *</label>
+        <input class="form-control" type="date" name="date" value="{{ today }}" required />
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" type="submit">Confirm</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
