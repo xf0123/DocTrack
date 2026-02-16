@@ -61,10 +61,15 @@ def init_db() -> None:
             approved_date TEXT,
             approved_by TEXT,
             scanned_date TEXT,
-            scanned_by TEXT
+            scanned_by TEXT,
+            link_path TEXT
         );
         """
     )
+
+    document_columns = {row[1] for row in cur.execute("PRAGMA table_info(documents)").fetchall()}
+    if "link_path" not in document_columns:
+        cur.execute("ALTER TABLE documents ADD COLUMN link_path TEXT")
 
     admin = cur.execute("SELECT id FROM users WHERE username = ?", ("admin",)).fetchone()
     if not admin:
@@ -297,8 +302,12 @@ def scan_document(doc_id: int) -> Any:
         return guard
 
     scanned_date = request.form.get("date", "")
+    link_path = request.form.get("link_path", "").strip()
     if not scanned_date:
         flash("Scanned date is required.", "danger")
+        return redirect(url_for("documents"))
+    if not link_path:
+        flash("Link path is required.", "danger")
         return redirect(url_for("documents"))
 
     user = get_current_user()
@@ -314,8 +323,8 @@ def scan_document(doc_id: int) -> Any:
         return redirect(url_for("documents"))
 
     db.execute(
-        "UPDATE documents SET scanned = 1, scanned_date = ?, scanned_by = ? WHERE id = ?",
-        (scanned_date, user["username"], doc_id),
+        "UPDATE documents SET scanned = 1, scanned_date = ?, scanned_by = ?, link_path = ? WHERE id = ?",
+        (scanned_date, user["username"], link_path, doc_id),
     )
     db.commit()
     flash("Document marked as scanned.", "success")
