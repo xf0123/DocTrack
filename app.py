@@ -203,7 +203,7 @@ def documents() -> Any:
         page_number = max(int(page), 1)
     except ValueError:
         page_number = 1
-    page_size = 10
+    page_size = 6
 
     where_clause = " WHERE 1=1"
     params: list[Any] = []
