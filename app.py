@@ -16,7 +16,7 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = "change-this-secret-key"
 
 
-TYPE_OPTIONS = ["Protocol", "Report", "Other"]
+TYPE_OPTIONS = ["Protocol", "Report", "CRF", "Dev", "QRA", "Other"]
 PROCESS_OPTIONS = ["Cal", "Qual", "PV", "CV", "APS", "TV", "CSV", "Other"]
 
 
@@ -303,8 +303,10 @@ def scan_document(doc_id: int) -> Any:
 
     scanned_date = request.form.get("date", "")
     link_path = request.form.get("link_path", "").strip()
-    if len(link_path) >= 2 and link_path[0] == '"' and link_path[-1] == '"':
-        link_path = link_path[1:-1].strip()
+    if link_path.startswith('"'):
+        link_path = link_path[1:].strip()
+    if link_path.endswith('"'):
+        link_path = link_path[:-1].strip()
     if not scanned_date:
         flash("Scanned date is required.", "danger")
         return redirect(url_for("documents"))
