@@ -86,6 +86,24 @@ def init_db() -> None:
     conn.close()
 
 
+def backup_database_if_needed() -> None:
+    backup_dir = DATA_DIR / "backup"
+    backup_dir.mkdir(parents=True, exist_ok=True)
+
+    backup_filename = f"DocTract_{date.today().strftime('%d-%b-%Y')}.db"
+    backup_path = backup_dir / backup_filename
+    if backup_path.exists() or not DB_PATH.exists():
+        return
+
+    source_conn = sqlite3.connect(DB_PATH)
+    backup_conn = sqlite3.connect(backup_path)
+    try:
+        source_conn.backup(backup_conn)
+    finally:
+        backup_conn.close()
+        source_conn.close()
+
+
 def login_required() -> Any:
     if "user_id" not in session:
         return redirect(url_for("login"))
@@ -147,6 +165,9 @@ def login() -> Any:
 
         session.clear()
         session["user_id"] = user["id"]
+
+        backup_database_if_needed()
+
         return redirect(url_for("dashboard"))
     return render_template("login.html")
 
