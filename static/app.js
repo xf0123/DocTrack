@@ -51,7 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     searchFilter.addEventListener("input", () => {
       clearTimeout(searchDebounce);
-      searchDebounce = setTimeout(applyFilters, 500);
+      searchDebounce = setTimeout(applyFilters, 250);
     });
   }
 
