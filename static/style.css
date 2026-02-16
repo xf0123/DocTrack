@@ -18,3 +18,7 @@ body {
 textarea.form-control {
   resize: vertical;
 }
+
+.doc-row-clickable {
+  cursor: pointer;
+}

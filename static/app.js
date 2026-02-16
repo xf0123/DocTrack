@@ -2,12 +2,21 @@ document.addEventListener("DOMContentLoaded", () => {
   const statusForm = document.getElementById("statusForm");
   const modalLabel = document.getElementById("statusModalLabel");
   const statusButtons = document.querySelectorAll(".js-status-btn");
+  const linkPathGroup = document.getElementById("linkPathGroup");
+  const linkPathInput = document.getElementById("linkPathInput");
 
   statusButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
       if (!statusForm || !modalLabel) return;
       statusForm.action = btn.dataset.actionUrl;
       modalLabel.textContent = `${btn.dataset.label} Document`;
+
+      const needsLinkPath = btn.dataset.actionUrl.includes("/scan");
+      if (linkPathGroup && linkPathInput) {
+        linkPathGroup.classList.toggle("d-none", !needsLinkPath);
+        linkPathInput.required = needsLinkPath;
+        linkPathInput.value = "";
+      }
     });
   });
 
@@ -20,6 +29,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const applyFilters = () => {
     if (!filterForm) return;
+    if (document.activeElement === searchFilter) {
+      sessionStorage.setItem("documents.searchFocus", "1");
+    }
     const params = new URLSearchParams(new FormData(filterForm));
     window.location.href = `${window.location.pathname}?${params.toString()}`;
   };
@@ -31,6 +43,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let searchDebounce;
   if (searchFilter) {
+    if (sessionStorage.getItem("documents.searchFocus") === "1") {
+      searchFilter.focus();
+      searchFilter.selectionStart = searchFilter.selectionEnd = searchFilter.value.length;
+      sessionStorage.removeItem("documents.searchFocus");
+    }
+
     searchFilter.addEventListener("input", () => {
       clearTimeout(searchDebounce);
       searchDebounce = setTimeout(applyFilters, 500);
@@ -39,9 +57,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (clearFiltersBtn) {
     clearFiltersBtn.addEventListener("click", () => {
+      sessionStorage.removeItem("documents.searchFocus");
       window.location.href = window.location.pathname;
     });
   }
+
+  const linkPathRows = document.querySelectorAll(".js-link-path-row");
+  const linkPathViewer = document.getElementById("linkPathViewer");
+  linkPathRows.forEach((row) => {
+    row.addEventListener("click", (event) => {
+      if (!linkPathViewer) return;
+      const path = row.dataset.linkPath || "";
+      if (!path) {
+        event.preventDefault();
+        return;
+      }
+
+      if (event.target.closest("button, a, input, select, textarea, label")) {
+        return;
+      }
+
+      linkPathViewer.value = path;
+    });
+  });
 
   const addDocumentForm = document.getElementById("addDocumentForm");
   const singleCheckboxes = document.querySelectorAll(".js-single-checkbox");
