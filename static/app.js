@@ -62,6 +62,27 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  const paginationForm = document.getElementById("paginationForm");
+  const pageInput = document.getElementById("pageInput");
+  if (paginationForm && pageInput) {
+    const submitPage = () => {
+      const minPage = Number(pageInput.min || 1);
+      const maxPage = Number(pageInput.max || minPage);
+      const requestedPage = Number(pageInput.value || minPage);
+      const safePage = Math.min(Math.max(requestedPage, minPage), maxPage);
+      pageInput.value = String(safePage);
+      paginationForm.requestSubmit();
+    };
+
+    pageInput.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      event.preventDefault();
+      submitPage();
+    });
+
+    pageInput.addEventListener("change", submitPage);
+  }
+
   const linkPathRows = document.querySelectorAll(".js-link-path-row");
   const linkPathViewer = document.getElementById("linkPathViewer");
   const copyLinkPathBtn = document.getElementById("copyLinkPathBtn");
