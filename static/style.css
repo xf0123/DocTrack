@@ -56,6 +56,33 @@ body.documents-page-body main.container {
   font-size: 1.3rem;
 }
 
+#documentsFilterForm {
+  display: inline-block;
+  width: max-content;
+  height: max-content;
+  padding: 0.2rem !important;
+}
+
+#documentsFilterForm > div {
+  width: max-content;
+  height: max-content;
+  margin: 0.2rem;
+}
+
+#documentsFilterForm .row {
+  flex-wrap: nowrap;
+}
+
+#documentsFilterForm .col-md-3 {
+  flex: 0 0 260px;
+  max-width: 260px;
+}
+
+#documentsFilterForm .col-md-2 {
+  flex: 0 0 170px;
+  max-width: 170px;
+}
+
 .documents-table-wrap {
   flex: 1 1 auto;
   min-height: 0;
