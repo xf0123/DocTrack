@@ -57,8 +57,16 @@ body.documents-page-body main.container {
 }
 
 #documentsFilterForm {
-  width: 980px;
-  max-width: 980px;
+  display: inline-block;
+  width: max-content;
+  height: max-content;
+  padding: 0.2rem !important;
+}
+
+#documentsFilterForm > div {
+  width: max-content;
+  height: max-content;
+  margin: 0.2rem;
 }
 
 #documentsFilterForm .row {
