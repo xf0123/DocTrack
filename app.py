@@ -310,6 +310,40 @@ def add_document() -> Any:
     return redirect(url_for("documents"))
 
 
+
+
+@app.route("/documents/<int:doc_id>/update", methods=["POST"])
+def update_document(doc_id: int) -> Any:
+    guard = login_required()
+    if guard:
+        return guard
+
+    form = request.form
+    doc_type = form.get("type", "")
+    process = form.get("process", "")
+    doc_no = form.get("doc_no", "").strip()
+    title = form.get("title", "").strip()
+
+    if doc_type not in TYPE_OPTIONS or process not in PROCESS_OPTIONS or not doc_no or not title:
+        flash("Please fill all mandatory fields correctly.", "danger")
+        return redirect(url_for("documents"))
+
+    db = get_db()
+    doc = db.execute("SELECT * FROM documents WHERE id = ?", (doc_id,)).fetchone()
+    if not doc:
+        abort(404)
+    if doc["scanned"]:
+        flash("Scanned documents cannot be edited from this modal.", "warning")
+        return redirect(url_for("documents"))
+
+    db.execute(
+        "UPDATE documents SET type = ?, process = ?, doc_no = ?, title = ? WHERE id = ?",
+        (doc_type, process, doc_no, title, doc_id),
+    )
+    db.commit()
+    flash("Document updated.", "success")
+    return redirect(url_for("documents"))
+
 @app.route("/documents/<int:doc_id>/approve", methods=["POST"])
 def approve_document(doc_id: int) -> Any:
     guard = login_required()
@@ -457,4 +491,4 @@ def setup() -> Any:
 
 if __name__ == "__main__":
     init_db()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=4000, debug=True)

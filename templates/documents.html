@@ -61,7 +61,16 @@
     </thead>
     <tbody>
       {% for d in docs %}
-      <tr class="js-link-path-row {% if d['approved'] and d['link_path'] %}doc-row-clickable{% endif %}" data-link-path="{{ d['link_path'] or '' }}" {% if d['approved'] and d['link_path'] %}data-bs-toggle="modal" data-bs-target="#linkPathModal"{% endif %}>
+      <tr
+        class="js-document-row doc-row-clickable"
+        data-doc-id="{{ d['id'] }}"
+        data-scanned="{{ '1' if d['scanned'] else '0' }}"
+        data-link-path="{{ d['link_path'] or '' }}"
+        data-type="{{ d['type'] }}"
+        data-process="{{ d['process'] }}"
+        data-doc-no="{{ d['doc_no'] }}"
+        data-title="{{ d['title'] }}"
+      >
         <td>{{ d['id'] }}</td>
         <td>{{ d['type'] }}</td>
         <td>{{ d['process'] }}</td>
@@ -223,6 +232,40 @@
         <button class="btn btn-outline-secondary" type="button" id="copyLinkPathBtn">Copy</button>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="modal fade" id="editDocumentModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" method="post" id="editDocumentForm">
+      <div class="modal-header"><h2 class="h5 modal-title">Edit Document</h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body d-grid gap-3">
+        <div>
+          <label class="form-label" for="editType">Type *</label>
+          <select class="form-select" name="type" id="editType" required>
+            {% for t in type_options %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="editProcess">Process *</label>
+          <select class="form-select" name="process" id="editProcess" required>
+            {% for p in process_options %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="form-label" for="editDocNo">Doc No *</label>
+          <textarea class="form-control" name="doc_no" id="editDocNo" rows="2" required></textarea>
+        </div>
+        <div>
+          <label class="form-label" for="editTitle">Title *</label>
+          <textarea class="form-control" name="title" id="editTitle" rows="2" required></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" type="submit">Save Changes</button>
+      </div>
+    </form>
   </div>
 </div>
 </div>
