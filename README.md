@@ -28,7 +28,7 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Open: `http://localhost:5000`
+Open: `http://localhost:4000`
 
 Default admin account:
 
