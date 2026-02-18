@@ -81,6 +81,13 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     pageInput.addEventListener("change", submitPage);
+
+    paginationForm.querySelectorAll("[data-page-target]").forEach((button) => {
+      button.addEventListener("click", () => {
+        pageInput.value = button.dataset.pageTarget || pageInput.value;
+        submitPage();
+      });
+    });
   }
 
   const documentRows = document.querySelectorAll(".js-document-row");
