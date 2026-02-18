@@ -132,7 +132,12 @@
   <input type="hidden" name="process" value="{{ process_filter }}">
   <input type="hidden" name="q" value="{{ q }}">
 
-  <button class="btn btn-outline-secondary" type="submit" name="page" value="{{ page_number - 1 }}" {{ 'disabled' if page_number <= 1 else '' }}>Prev</button>
+  <button
+    class="btn btn-outline-secondary"
+    type="button"
+    data-page-target="{{ page_number - 1 }}"
+    {{ 'disabled' if page_number <= 1 else '' }}
+  >Prev</button>
   <label class="d-flex align-items-center gap-2 mb-0" for="pageInput">
     <span>Page</span>
     <input
@@ -147,7 +152,12 @@
     >
     <span>of {{ total_pages }}</span>
   </label>
-  <button class="btn btn-outline-secondary" type="submit" name="page" value="{{ page_number + 1 }}" {{ 'disabled' if page_number >= total_pages else '' }}>Next</button>
+  <button
+    class="btn btn-outline-secondary"
+    type="button"
+    data-page-target="{{ page_number + 1 }}"
+    {{ 'disabled' if page_number >= total_pages else '' }}
+  >Next</button>
   <span class="small text-body-secondary ms-auto">{{ total_docs }} record{{ '' if total_docs == 1 else 's' }} ({{ page_size }} per page)</span>
 </form>
 
