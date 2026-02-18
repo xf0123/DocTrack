@@ -36,7 +36,11 @@ body.documents-page-body main.container {
   height: calc(100vh - 74px);
   display: flex;
   flex-direction: column;
-  padding-bottom: 0.75rem !important;
+  width: 100vw;
+  max-width: 100vw;
+  margin: 0;
+  padding: 0 0.75rem 0.75rem !important;
+  box-sizing: border-box;
 }
 
 .documents-page {
@@ -57,30 +61,33 @@ body.documents-page-body main.container {
 }
 
 #documentsFilterForm {
-  display: inline-block;
-  width: max-content;
-  height: max-content;
-  padding: 0.2rem !important;
+  flex: 0 0 auto;
+  width: 100%;
+  margin: 0 0 0.25rem;
+  box-sizing: border-box;
 }
 
-#documentsFilterForm > div {
-  width: max-content;
-  height: max-content;
-  margin: 0.2rem;
+#documentsFilterForm > .row {
+  width: 100%;
+  margin: 0;
 }
 
-#documentsFilterForm .row {
-  flex-wrap: nowrap;
+#documentsFilterForm > .row > [class*="col-"] {
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
 }
 
-#documentsFilterForm .col-md-3 {
-  flex: 0 0 260px;
-  max-width: 260px;
+#documentsFilterForm .form-select,
+#documentsFilterForm .form-control,
+#documentsFilterForm .btn {
+  width: 100%;
 }
 
-#documentsFilterForm .col-md-2 {
-  flex: 0 0 170px;
-  max-width: 170px;
+.documents-table-wrap,
+#paginationForm,
+.documents-table-wrap .table {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .documents-table-wrap {
