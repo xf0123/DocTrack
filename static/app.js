@@ -83,23 +83,49 @@ document.addEventListener("DOMContentLoaded", () => {
     pageInput.addEventListener("change", submitPage);
   }
 
-  const linkPathRows = document.querySelectorAll(".js-link-path-row");
+  const documentRows = document.querySelectorAll(".js-document-row");
   const linkPathViewer = document.getElementById("linkPathViewer");
   const copyLinkPathBtn = document.getElementById("copyLinkPathBtn");
-  linkPathRows.forEach((row) => {
-    row.addEventListener("click", (event) => {
-      if (!linkPathViewer) return;
-      const path = row.dataset.linkPath || "";
-      if (!path) {
-        event.preventDefault();
-        return;
-      }
+  const editDocumentForm = document.getElementById("editDocumentForm");
+  const editType = document.getElementById("editType");
+  const editProcess = document.getElementById("editProcess");
+  const editDocNo = document.getElementById("editDocNo");
+  const editTitle = document.getElementById("editTitle");
 
+  const linkPathModalElement = document.getElementById("linkPathModal");
+  const editModalElement = document.getElementById("editDocumentModal");
+  const linkPathModal =
+    linkPathModalElement && window.bootstrap ? window.bootstrap.Modal.getOrCreateInstance(linkPathModalElement) : null;
+  const editDocumentModal =
+    editModalElement && window.bootstrap ? window.bootstrap.Modal.getOrCreateInstance(editModalElement) : null;
+
+  documentRows.forEach((row) => {
+    row.addEventListener("click", (event) => {
       if (event.target.closest("button, a, input, select, textarea, label")) {
         return;
       }
 
-      linkPathViewer.value = path;
+      const isScanned = row.dataset.scanned === "1";
+      if (isScanned) {
+        if (!linkPathViewer || !linkPathModal) return;
+        const path = row.dataset.linkPath || "";
+        if (!path) return;
+
+        linkPathViewer.value = path;
+        linkPathModal.show();
+        return;
+      }
+
+      if (!editDocumentForm || !editType || !editProcess || !editDocNo || !editTitle || !editDocumentModal) {
+        return;
+      }
+
+      editDocumentForm.action = `/documents/${row.dataset.docId}/update`;
+      editType.value = row.dataset.type || "";
+      editProcess.value = row.dataset.process || "";
+      editDocNo.value = row.dataset.docNo || "";
+      editTitle.value = row.dataset.title || "";
+      editDocumentModal.show();
     });
   });
 
