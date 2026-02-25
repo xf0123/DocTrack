@@ -32,6 +32,36 @@ body.documents-page-body .navbar {
   margin-bottom: 0.75rem !important;
 }
 
+@media (min-width: 576px) {
+  body > nav > div.container {
+    max-width: calc(50vw + 270px);
+  }
+}
+
+@media (min-width: 768px) {
+  body > nav > div.container {
+    max-width: calc(50vw + 360px);
+  }
+}
+
+@media (min-width: 992px) {
+  body > nav > div.container {
+    max-width: calc(50vw + 480px);
+  }
+}
+
+@media (min-width: 1200px) {
+  body > nav > div.container {
+    max-width: calc(50vw + 570px);
+  }
+}
+
+@media (min-width: 1400px) {
+  body > nav > div.container {
+    max-width: calc(50vw + 660px);
+  }
+}
+
 body.documents-page-body main.container {
   height: calc(100vh - 74px);
   display: flex;
