@@ -21,9 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   const filterForm = document.getElementById("documentsFilterForm");
-  const statusFilter = document.getElementById("statusFilter");
-  const typeFilter = document.getElementById("typeFilter");
-  const processFilter = document.getElementById("processFilter");
+  const filterCheckboxes = document.querySelectorAll(".js-filter-checkbox");
   const searchFilter = document.getElementById("searchFilter");
   const clearFiltersBtn = document.getElementById("clearFiltersBtn");
 
@@ -36,8 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
     window.location.href = `${window.location.pathname}?${params.toString()}`;
   };
 
-  [statusFilter, typeFilter, processFilter].forEach((field) => {
-    if (!field) return;
+  filterCheckboxes.forEach((field) => {
     field.addEventListener("change", applyFilters);
   });
 
@@ -98,6 +95,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const editProcess = document.getElementById("editProcess");
   const editDocNo = document.getElementById("editDocNo");
   const editTitle = document.getElementById("editTitle");
+  const editRemarks = document.getElementById("editRemarks");
 
   const linkPathModalElement = document.getElementById("linkPathModal");
   const editModalElement = document.getElementById("editDocumentModal");
@@ -123,7 +121,7 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      if (!editDocumentForm || !editType || !editProcess || !editDocNo || !editTitle || !editDocumentModal) {
+      if (!editDocumentForm || !editType || !editProcess || !editDocNo || !editTitle || !editRemarks || !editDocumentModal) {
         return;
       }
 
@@ -132,6 +130,7 @@ document.addEventListener("DOMContentLoaded", () => {
       editProcess.value = row.dataset.process || "";
       editDocNo.value = row.dataset.docNo || "";
       editTitle.value = row.dataset.title || "";
+      editRemarks.value = row.dataset.remarks || "";
       editDocumentModal.show();
     });
   });
