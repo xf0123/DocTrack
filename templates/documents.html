@@ -13,26 +13,42 @@
   <div class="row g-1">
     <div class="col-md-3">
       <label class="form-label">Status</label>
-      <select class="form-select" name="status" id="statusFilter">
-        <option value="all" {{ 'selected' if status_filter == 'all' else '' }}>All</option>
-        <option value="on_circulation" {{ 'selected' if status_filter == 'on_circulation' else '' }}>On circulation</option>
-        <option value="approved_not_scanned" {{ 'selected' if status_filter == 'approved_not_scanned' else '' }}>Approved not scanned</option>
-        <option value="completed" {{ 'selected' if status_filter == 'completed' else '' }}>Completed</option>
-      </select>
+      <div class="border rounded p-2 checkbox-filter-group" id="statusFilter">
+        <div class="form-check">
+          <input class="form-check-input js-filter-checkbox" type="checkbox" name="status" id="status-on-circulation" value="on_circulation" {{ 'checked' if 'on_circulation' in status_filters else '' }}>
+          <label class="form-check-label" for="status-on-circulation">On circulation</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input js-filter-checkbox" type="checkbox" name="status" id="status-approved-not-scanned" value="approved_not_scanned" {{ 'checked' if 'approved_not_scanned' in status_filters else '' }}>
+          <label class="form-check-label" for="status-approved-not-scanned">Approved not scanned</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input js-filter-checkbox" type="checkbox" name="status" id="status-completed" value="completed" {{ 'checked' if 'completed' in status_filters else '' }}>
+          <label class="form-check-label" for="status-completed">Completed</label>
+        </div>
+      </div>
     </div>
     <div class="col-md-2">
       <label class="form-label">Type</label>
-      <select class="form-select" name="type" id="typeFilter">
-        <option value="all">All</option>
-        {% for t in type_options %}<option value="{{ t }}" {{ 'selected' if type_filter == t else '' }}>{{ t }}</option>{% endfor %}
-      </select>
+      <div class="border rounded p-2 checkbox-filter-group" id="typeFilter">
+        {% for t in type_options %}
+        <div class="form-check">
+          <input class="form-check-input js-filter-checkbox" type="checkbox" name="type" id="type-filter-{{ loop.index }}" value="{{ t }}" {{ 'checked' if t in type_filters else '' }}>
+          <label class="form-check-label" for="type-filter-{{ loop.index }}">{{ t }}</label>
+        </div>
+        {% endfor %}
+      </div>
     </div>
     <div class="col-md-2">
       <label class="form-label">Process</label>
-      <select class="form-select" name="process" id="processFilter">
-        <option value="all">All</option>
-        {% for p in process_options %}<option value="{{ p }}" {{ 'selected' if process_filter == p else '' }}>{{ p }}</option>{% endfor %}
-      </select>
+      <div class="border rounded p-2 checkbox-filter-group" id="processFilter">
+        {% for p in process_options %}
+        <div class="form-check">
+          <input class="form-check-input js-filter-checkbox" type="checkbox" name="process" id="process-filter-{{ loop.index }}" value="{{ p }}" {{ 'checked' if p in process_filters else '' }}>
+          <label class="form-check-label" for="process-filter-{{ loop.index }}">{{ p }}</label>
+        </div>
+        {% endfor %}
+      </div>
     </div>
     <div class="col-md-3">
       <label class="form-label">Search</label>
@@ -70,6 +86,7 @@
         data-process="{{ d['process'] }}"
         data-doc-no="{{ d['doc_no'] }}"
         data-title="{{ d['title'] }}"
+        data-remarks="{{ d['remarks'] or '' }}"
       >
         <td>{{ d['id'] }}</td>
         <td>{{ d['type'] }}</td>
@@ -127,9 +144,9 @@
 </div>
 
 <form class="d-flex flex-wrap align-items-center gap-2 mt-2" method="get" id="paginationForm">
-  <input type="hidden" name="status" value="{{ status_filter }}">
-  <input type="hidden" name="type" value="{{ type_filter }}">
-  <input type="hidden" name="process" value="{{ process_filter }}">
+  {% for status in status_filters %}<input type="hidden" name="status" value="{{ status }}">{% endfor %}
+  {% for type in type_filters %}<input type="hidden" name="type" value="{{ type }}">{% endfor %}
+  {% for process in process_filters %}<input type="hidden" name="process" value="{{ process }}">{% endfor %}
   <input type="hidden" name="q" value="{{ q }}">
 
   <button
@@ -202,6 +219,10 @@
           <label class="form-label">Title *</label>
           <textarea class="form-control" name="title" rows="2" required></textarea>
         </div>
+        <div>
+          <label class="form-label">Notes / Remarks</label>
+          <textarea class="form-control" name="remarks" rows="2" placeholder="Optional notes"></textarea>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
@@ -248,7 +269,7 @@
 <div class="modal fade" id="editDocumentModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <form class="modal-content" method="post" id="editDocumentForm">
-      <div class="modal-header"><h2 class="h5 modal-title">Edit Document</h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header"><h2 class="h5 modal-title">Re-open Document</h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body d-grid gap-3">
         <div>
           <label class="form-label" for="editType">Type *</label>
@@ -269,6 +290,10 @@
         <div>
           <label class="form-label" for="editTitle">Title *</label>
           <textarea class="form-control" name="title" id="editTitle" rows="2" required></textarea>
+        </div>
+        <div>
+          <label class="form-label" for="editRemarks">Notes / Remarks</label>
+          <textarea class="form-control" name="remarks" id="editRemarks" rows="2" placeholder="Optional notes"></textarea>
         </div>
       </div>
       <div class="modal-footer">

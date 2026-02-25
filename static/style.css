@@ -83,6 +83,16 @@ body.documents-page-body main.container {
   width: 100%;
 }
 
+#documentsFilterForm .checkbox-filter-group {
+  max-height: 132px;
+  overflow: auto;
+  background: var(--bs-body-bg);
+}
+
+#documentsFilterForm .checkbox-filter-group .form-check {
+  margin-bottom: 0.15rem;
+}
+
 .documents-table-wrap,
 #paginationForm,
 .documents-table-wrap .table {

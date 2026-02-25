@@ -54,6 +54,7 @@ def init_db() -> None:
             process TEXT NOT NULL,
             doc_no TEXT NOT NULL,
             title TEXT NOT NULL,
+            remarks TEXT,
             approved INTEGER NOT NULL DEFAULT 0,
             scanned INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL,
@@ -70,6 +71,8 @@ def init_db() -> None:
     document_columns = {row[1] for row in cur.execute("PRAGMA table_info(documents)").fetchall()}
     if "link_path" not in document_columns:
         cur.execute("ALTER TABLE documents ADD COLUMN link_path TEXT")
+    if "remarks" not in document_columns:
+        cur.execute("ALTER TABLE documents ADD COLUMN remarks TEXT")
 
     admin = cur.execute("SELECT id FROM users WHERE username = ?", ("admin",)).fetchone()
     if not admin:
@@ -215,9 +218,9 @@ def documents() -> Any:
     if guard:
         return guard
 
-    status_filter = request.args.get("status", "all")
-    type_filter = request.args.get("type", "all")
-    process_filter = request.args.get("process", "all")
+    status_filters = [value for value in request.args.getlist("status") if value]
+    type_filters = [value for value in request.args.getlist("type") if value]
+    process_filters = [value for value in request.args.getlist("process") if value]
     q = request.args.get("q", "").strip()
     page = request.args.get("page", "1").strip()
     try:
@@ -229,20 +232,26 @@ def documents() -> Any:
     where_clause = " WHERE 1=1"
     params: list[Any] = []
 
-    if status_filter == "on_circulation":
-        where_clause += " AND approved = 0"
-    elif status_filter == "approved_not_scanned":
-        where_clause += " AND approved = 1 AND scanned = 0"
-    elif status_filter == "completed":
-        where_clause += " AND approved = 1 AND scanned = 1"
+    status_conditions = {
+        "on_circulation": "(approved = 0)",
+        "approved_not_scanned": "(approved = 1 AND scanned = 0)",
+        "completed": "(approved = 1 AND scanned = 1)",
+    }
+    valid_status_filters = [status for status in status_filters if status in status_conditions]
+    if valid_status_filters and len(valid_status_filters) < len(status_conditions):
+        where_clause += " AND (" + " OR ".join(status_conditions[status] for status in valid_status_filters) + ")"
 
-    if type_filter != "all":
-        where_clause += " AND type = ?"
-        params.append(type_filter)
+    valid_type_filters = [doc_type for doc_type in type_filters if doc_type in TYPE_OPTIONS]
+    if valid_type_filters and len(valid_type_filters) < len(TYPE_OPTIONS):
+        placeholders = ", ".join("?" for _ in valid_type_filters)
+        where_clause += f" AND type IN ({placeholders})"
+        params.extend(valid_type_filters)
 
-    if process_filter != "all":
-        where_clause += " AND process = ?"
-        params.append(process_filter)
+    valid_process_filters = [process for process in process_filters if process in PROCESS_OPTIONS]
+    if valid_process_filters and len(valid_process_filters) < len(PROCESS_OPTIONS):
+        placeholders = ", ".join("?" for _ in valid_process_filters)
+        where_clause += f" AND process IN ({placeholders})"
+        params.extend(valid_process_filters)
 
     if q:
         where_clause += " AND (doc_no LIKE ? OR title LIKE ?)"
@@ -269,9 +278,9 @@ def documents() -> Any:
         existing_doc_nos=existing_doc_nos,
         type_options=TYPE_OPTIONS,
         process_options=PROCESS_OPTIONS,
-        status_filter=status_filter,
-        type_filter=type_filter,
-        process_filter=process_filter,
+        status_filters=valid_status_filters,
+        type_filters=valid_type_filters,
+        process_filters=valid_process_filters,
         q=q,
         page_number=page_number,
         total_pages=total_pages,
@@ -292,6 +301,7 @@ def add_document() -> Any:
     process = form.get("process", "")
     doc_no = form.get("doc_no", "").strip()
     title = form.get("title", "").strip()
+    remarks = form.get("remarks", "").strip()
 
     if doc_type not in TYPE_OPTIONS or process not in PROCESS_OPTIONS or not doc_no or not title:
         flash("Please fill all mandatory fields correctly.", "danger")
@@ -300,10 +310,10 @@ def add_document() -> Any:
     user = get_current_user()
     get_db().execute(
         """
-        INSERT INTO documents (type, process, doc_no, title, approved, scanned, created_at, created_by)
-        VALUES (?, ?, ?, ?, 0, 0, ?, ?)
+        INSERT INTO documents (type, process, doc_no, title, remarks, approved, scanned, created_at, created_by)
+        VALUES (?, ?, ?, ?, ?, 0, 0, ?, ?)
         """,
-        (doc_type, process, doc_no, title, date.today().isoformat(), user["username"]),
+        (doc_type, process, doc_no, title, remarks, date.today().isoformat(), user["username"]),
     )
     get_db().commit()
     flash("Document added.", "success")
@@ -323,6 +333,7 @@ def update_document(doc_id: int) -> Any:
     process = form.get("process", "")
     doc_no = form.get("doc_no", "").strip()
     title = form.get("title", "").strip()
+    remarks = form.get("remarks", "").strip()
 
     if doc_type not in TYPE_OPTIONS or process not in PROCESS_OPTIONS or not doc_no or not title:
         flash("Please fill all mandatory fields correctly.", "danger")
@@ -337,8 +348,8 @@ def update_document(doc_id: int) -> Any:
         return redirect(url_for("documents"))
 
     db.execute(
-        "UPDATE documents SET type = ?, process = ?, doc_no = ?, title = ? WHERE id = ?",
-        (doc_type, process, doc_no, title, doc_id),
+        "UPDATE documents SET type = ?, process = ?, doc_no = ?, title = ?, remarks = ? WHERE id = ?",
+        (doc_type, process, doc_no, title, remarks, doc_id),
     )
     db.commit()
     flash("Document updated.", "success")
