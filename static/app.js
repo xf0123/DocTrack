@@ -62,9 +62,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const paginationForm = document.getElementById("paginationForm");
   const pageInput = document.getElementById("pageInput");
   if (paginationForm && pageInput) {
+    const minPage = Number(pageInput.min || 1);
+    const maxPage = Number(pageInput.max || minPage);
+
     const submitPage = () => {
-      const minPage = Number(pageInput.min || 1);
-      const maxPage = Number(pageInput.max || minPage);
       const requestedPage = Number(pageInput.value || minPage);
       const safePage = Math.min(Math.max(requestedPage, minPage), maxPage);
       pageInput.value = String(safePage);
@@ -85,6 +86,36 @@ document.addEventListener("DOMContentLoaded", () => {
         submitPage();
       });
     });
+
+    let lastWheelNav = 0;
+    document.addEventListener(
+      "wheel",
+      (event) => {
+        const openModal = document.querySelector(".modal.show");
+        if (openModal) return;
+
+        const target = event.target;
+        if (target instanceof HTMLElement && target.closest("input, textarea, select, [contenteditable='true']")) {
+          return;
+        }
+
+        const now = Date.now();
+        if (now - lastWheelNav < 350) return;
+
+        const delta = event.deltaY;
+        if (!delta) return;
+
+        const currentPage = Number(pageInput.value || minPage);
+        const nextPage = delta > 0 ? Math.min(currentPage + 1, maxPage) : Math.max(currentPage - 1, minPage);
+        if (nextPage === currentPage) return;
+
+        lastWheelNav = now;
+        event.preventDefault();
+        pageInput.value = String(nextPage);
+        submitPage();
+      },
+      { passive: false }
+    );
   }
 
   const documentRows = document.querySelectorAll(".js-document-row");
