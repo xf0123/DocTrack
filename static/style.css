@@ -34,31 +34,31 @@ body.documents-page-body .navbar {
 
 @media (min-width: 576px) {
   body > nav > div.container {
-    max-width: calc(50vw + 270px);
+    max-width: calc(90vw + 54px);
   }
 }
 
 @media (min-width: 768px) {
   body > nav > div.container {
-    max-width: calc(50vw + 360px);
+    max-width: calc(90vw + 72px);
   }
 }
 
 @media (min-width: 992px) {
   body > nav > div.container {
-    max-width: calc(50vw + 480px);
+    max-width: calc(90vw + 96px);
   }
 }
 
 @media (min-width: 1200px) {
   body > nav > div.container {
-    max-width: calc(50vw + 570px);
+    max-width: calc(90vw + 114px);
   }
 }
 
 @media (min-width: 1400px) {
   body > nav > div.container {
-    max-width: calc(50vw + 660px);
+    max-width: calc(90vw + 132px);
   }
 }
 
