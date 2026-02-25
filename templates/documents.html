@@ -10,53 +10,51 @@
 </div>
 
 <form class="card card-body mb-2 py-2" method="get" id="documentsFilterForm">
-  <div class="row g-1">
-    <div class="col-md-3">
-      <label class="form-label">Status</label>
-      <div class="border rounded p-2 checkbox-filter-group" id="statusFilter">
-        <div class="form-check">
-          <input class="form-check-input js-filter-checkbox" type="checkbox" name="status" id="status-on-circulation" value="on_circulation" {{ 'checked' if 'on_circulation' in status_filters else '' }}>
-          <label class="form-check-label" for="status-on-circulation">On circulation</label>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input js-filter-checkbox" type="checkbox" name="status" id="status-approved-not-scanned" value="approved_not_scanned" {{ 'checked' if 'approved_not_scanned' in status_filters else '' }}>
-          <label class="form-check-label" for="status-approved-not-scanned">Approved not scanned</label>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input js-filter-checkbox" type="checkbox" name="status" id="status-completed" value="completed" {{ 'checked' if 'completed' in status_filters else '' }}>
-          <label class="form-check-label" for="status-completed">Completed</label>
-        </div>
+  <div class="filter-line">
+    <label class="form-label filter-line-label mb-0">Status</label>
+    <div class="border rounded p-2 checkbox-filter-group" id="statusFilter">
+      <div class="form-check">
+        <input class="form-check-input js-filter-checkbox" type="checkbox" name="status" id="status-on-circulation" value="on_circulation" {{ 'checked' if 'on_circulation' in status_filters else '' }}>
+        <label class="form-check-label" for="status-on-circulation">On circulation</label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input js-filter-checkbox" type="checkbox" name="status" id="status-approved-not-scanned" value="approved_not_scanned" {{ 'checked' if 'approved_not_scanned' in status_filters else '' }}>
+        <label class="form-check-label" for="status-approved-not-scanned">Approved not scanned</label>
+      </div>
+      <div class="form-check">
+        <input class="form-check-input js-filter-checkbox" type="checkbox" name="status" id="status-completed" value="completed" {{ 'checked' if 'completed' in status_filters else '' }}>
+        <label class="form-check-label" for="status-completed">Completed</label>
       </div>
     </div>
-    <div class="col-md-2">
-      <label class="form-label">Type</label>
-      <div class="border rounded p-2 checkbox-filter-group" id="typeFilter">
-        {% for t in type_options %}
-        <div class="form-check">
-          <input class="form-check-input js-filter-checkbox" type="checkbox" name="type" id="type-filter-{{ loop.index }}" value="{{ t }}" {{ 'checked' if t in type_filters else '' }}>
-          <label class="form-check-label" for="type-filter-{{ loop.index }}">{{ t }}</label>
-        </div>
-        {% endfor %}
+  </div>
+
+  <div class="filter-line mt-1">
+    <label class="form-label filter-line-label mb-0">Type</label>
+    <div class="border rounded p-2 checkbox-filter-group" id="typeFilter">
+      {% for t in type_options %}
+      <div class="form-check">
+        <input class="form-check-input js-filter-checkbox" type="checkbox" name="type" id="type-filter-{{ loop.index }}" value="{{ t }}" {{ 'checked' if t in type_filters else '' }}>
+        <label class="form-check-label" for="type-filter-{{ loop.index }}">{{ t }}</label>
       </div>
+      {% endfor %}
     </div>
-    <div class="col-md-2">
-      <label class="form-label">Process</label>
-      <div class="border rounded p-2 checkbox-filter-group" id="processFilter">
-        {% for p in process_options %}
-        <div class="form-check">
-          <input class="form-check-input js-filter-checkbox" type="checkbox" name="process" id="process-filter-{{ loop.index }}" value="{{ p }}" {{ 'checked' if p in process_filters else '' }}>
-          <label class="form-check-label" for="process-filter-{{ loop.index }}">{{ p }}</label>
-        </div>
-        {% endfor %}
+  </div>
+
+  <div class="filter-line mt-1">
+    <label class="form-label filter-line-label mb-0">Process</label>
+    <div class="border rounded p-2 checkbox-filter-group" id="processFilter">
+      {% for p in process_options %}
+      <div class="form-check">
+        <input class="form-check-input js-filter-checkbox" type="checkbox" name="process" id="process-filter-{{ loop.index }}" value="{{ p }}" {{ 'checked' if p in process_filters else '' }}>
+        <label class="form-check-label" for="process-filter-{{ loop.index }}">{{ p }}</label>
       </div>
+      {% endfor %}
     </div>
-    <div class="col-md-3">
-      <label class="form-label">Search</label>
-      <input class="form-control" type="text" name="q" id="searchFilter" value="{{ q }}" placeholder="Doc no or title" />
-    </div>
-    <div class="col-md-2 d-grid align-self-end">
-      <button class="btn btn-outline-secondary" type="button" id="clearFiltersBtn">Clear Filters</button>
-    </div>
+  </div>
+
+  <div class="filter-actions mt-2">
+    <input class="form-control" type="text" name="q" id="searchFilter" value="{{ q }}" placeholder="Doc no or title" />
+    <button class="btn btn-outline-secondary" type="button" id="clearFiltersBtn">Clear Filters</button>
   </div>
 </form>
 
