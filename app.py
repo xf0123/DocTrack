@@ -121,6 +121,15 @@ def get_current_user() -> sqlite3.Row | None:
 
 
 def redirect_to_documents_referrer() -> Any:
+    return_to = request.form.get("return_to", "")
+    if return_to:
+        parsed_return_to = urlparse(return_to)
+        if parsed_return_to.path == url_for("documents"):
+            target = parsed_return_to.path
+            if parsed_return_to.query:
+                target = f"{target}?{parsed_return_to.query}"
+            return redirect(target)
+
     referrer = request.referrer
     if referrer:
         parsed_referrer = urlparse(referrer)

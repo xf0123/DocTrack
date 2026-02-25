@@ -179,6 +179,7 @@
 <div class="modal fade" id="addDocumentModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <form class="modal-content" method="post" action="{{ url_for('add_document') }}" id="addDocumentForm" data-doc-nos='{{ existing_doc_nos | tojson }}'>
+      <input type="hidden" name="return_to" value="{{ request.full_path }}">
       <div class="modal-header"><h2 class="h5 modal-title">Add New Document</h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body d-grid gap-3">
         <div>
@@ -233,6 +234,7 @@
 <div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <form class="modal-content" method="post" id="statusForm">
+      <input type="hidden" name="return_to" value="{{ request.full_path }}">
       <div class="modal-header"><h2 class="h5 modal-title" id="statusModalLabel">Update Status</h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body">
         <label class="form-label">Date *</label>
@@ -267,6 +269,7 @@
 <div class="modal fade" id="editDocumentModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <form class="modal-content" method="post" id="editDocumentForm">
+      <input type="hidden" name="return_to" value="{{ request.full_path }}">
       <div class="modal-header"><h2 class="h5 modal-title">Re-open Document</h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body d-grid gap-3">
         <div>
