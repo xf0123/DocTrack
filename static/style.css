@@ -67,30 +67,57 @@ body.documents-page-body main.container {
   box-sizing: border-box;
 }
 
-#documentsFilterForm > .row {
-  width: 100%;
-  margin: 0;
+#documentsFilterForm .filter-line {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
 }
 
-#documentsFilterForm > .row > [class*="col-"] {
-  padding-left: 0.25rem;
-  padding-right: 0.25rem;
-}
-
-#documentsFilterForm .form-select,
-#documentsFilterForm .form-control,
-#documentsFilterForm .btn {
-  width: 100%;
+#documentsFilterForm .filter-line-label {
+  min-width: 70px;
+  font-weight: 500;
 }
 
 #documentsFilterForm .checkbox-filter-group {
-  max-height: 132px;
-  overflow: auto;
+  flex: 1 1 auto;
+  overflow-x: auto;
+  overflow-y: hidden;
   background: var(--bs-body-bg);
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  white-space: nowrap;
 }
 
 #documentsFilterForm .checkbox-filter-group .form-check {
-  margin-bottom: 0.15rem;
+  margin-bottom: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+#documentsFilterForm .filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+#documentsFilterForm #searchFilter {
+  flex: 1 1 auto;
+}
+
+#documentsFilterForm #clearFiltersBtn {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 768px) {
+  #documentsFilterForm .filter-line,
+  #documentsFilterForm .filter-actions {
+    flex-wrap: wrap;
+  }
+
+  #documentsFilterForm .filter-line-label {
+    min-width: auto;
+  }
 }
 
 .documents-table-wrap,
