@@ -4,6 +4,7 @@ import sqlite3
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 from flask import Flask, abort, flash, g, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -117,6 +118,15 @@ def get_current_user() -> sqlite3.Row | None:
     if "user_id" not in session:
         return None
     return get_db().execute("SELECT * FROM users WHERE id = ?", (session["user_id"],)).fetchone()
+
+
+def redirect_to_documents_referrer() -> Any:
+    referrer = request.referrer
+    if referrer:
+        parsed_referrer = urlparse(referrer)
+        if parsed_referrer.path == url_for("documents"):
+            return redirect(referrer)
+    return redirect(url_for("documents"))
 
 
 def admin_required() -> None:
@@ -305,7 +315,7 @@ def add_document() -> Any:
 
     if doc_type not in TYPE_OPTIONS or process not in PROCESS_OPTIONS or not doc_no or not title:
         flash("Please fill all mandatory fields correctly.", "danger")
-        return redirect(url_for("documents"))
+        return redirect_to_documents_referrer()
 
     user = get_current_user()
     get_db().execute(
@@ -317,7 +327,7 @@ def add_document() -> Any:
     )
     get_db().commit()
     flash("Document added.", "success")
-    return redirect(url_for("documents"))
+    return redirect_to_documents_referrer()
 
 
 
@@ -337,7 +347,7 @@ def update_document(doc_id: int) -> Any:
 
     if doc_type not in TYPE_OPTIONS or process not in PROCESS_OPTIONS or not doc_no or not title:
         flash("Please fill all mandatory fields correctly.", "danger")
-        return redirect(url_for("documents"))
+        return redirect_to_documents_referrer()
 
     db = get_db()
     doc = db.execute("SELECT * FROM documents WHERE id = ?", (doc_id,)).fetchone()
@@ -345,7 +355,7 @@ def update_document(doc_id: int) -> Any:
         abort(404)
     if doc["scanned"]:
         flash("Scanned documents cannot be edited from this modal.", "warning")
-        return redirect(url_for("documents"))
+        return redirect_to_documents_referrer()
 
     db.execute(
         "UPDATE documents SET type = ?, process = ?, doc_no = ?, title = ?, remarks = ? WHERE id = ?",
@@ -353,7 +363,7 @@ def update_document(doc_id: int) -> Any:
     )
     db.commit()
     flash("Document updated.", "success")
-    return redirect(url_for("documents"))
+    return redirect_to_documents_referrer()
 
 @app.route("/documents/<int:doc_id>/approve", methods=["POST"])
 def approve_document(doc_id: int) -> Any:
