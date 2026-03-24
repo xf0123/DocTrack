@@ -180,3 +180,12 @@ body.documents-page-body main.container {
 .document-checkbox-grid .form-check-label {
   font-size: 0.9rem;
 }
+
+.document-checkbox-row {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.9rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+}

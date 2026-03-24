@@ -4,11 +4,6 @@
 
 {% block content %}
 <div class="documents-page">
-<div class="d-flex justify-content-between align-items-center mb-2">
-  <h1 class="h3 mb-0">Documents</h1>
-  <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addDocumentModal">Add New Document</button>
-</div>
-
 <form class="card card-body mb-2 py-2" method="get" id="documentsFilterForm">
   <div class="filter-line">
     <label class="form-label filter-line-label mb-0">Status</label>
@@ -55,6 +50,7 @@
   <div class="filter-actions mt-2">
     <input class="form-control" type="text" name="q" id="searchFilter" value="{{ q }}" placeholder="Doc no or title" />
     <button class="btn btn-outline-secondary" type="button" id="clearFiltersBtn">Clear Filters</button>
+    <button class="btn btn-sm btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#addDocumentModal">Add New Document</button>
   </div>
 </form>
 
@@ -184,9 +180,9 @@
       <div class="modal-body d-grid gap-3">
         <div>
           <label class="form-label">Type *</label>
-          <div class="row row-cols-2 row-cols-md-4 g-2 document-checkbox-grid">
+          <div class="document-checkbox-grid document-checkbox-row">
             {% for t in type_options %}
-            <div class="col">
+            <div>
               <div class="form-check">
                 <input class="form-check-input js-single-checkbox" type="checkbox" data-group="type" id="type-{{ loop.index }}" value="{{ t }}">
                 <label class="form-check-label" for="type-{{ loop.index }}">{{ t }}</label>
@@ -198,9 +194,9 @@
         </div>
         <div>
           <label class="form-label">Process *</label>
-          <div class="row row-cols-2 row-cols-md-4 g-2 document-checkbox-grid">
+          <div class="document-checkbox-grid document-checkbox-row">
             {% for p in process_options %}
-            <div class="col">
+            <div>
               <div class="form-check">
                 <input class="form-check-input js-single-checkbox" type="checkbox" data-group="process" id="process-{{ loop.index }}" value="{{ p }}">
                 <label class="form-check-label" for="process-{{ loop.index }}">{{ p }}</label>
@@ -212,7 +208,7 @@
         </div>
         <div>
           <label class="form-label">Doc No *</label>
-          <textarea class="form-control" name="doc_no" rows="2" required></textarea>
+          <textarea class="form-control" name="doc_no" rows="1" required></textarea>
         </div>
         <div>
           <label class="form-label">Title *</label>
@@ -286,7 +282,7 @@
         </div>
         <div>
           <label class="form-label" for="editDocNo">Doc No *</label>
-          <textarea class="form-control" name="doc_no" id="editDocNo" rows="2" required></textarea>
+          <textarea class="form-control" name="doc_no" id="editDocNo" rows="1" required></textarea>
         </div>
         <div>
           <label class="form-label" for="editTitle">Title *</label>
