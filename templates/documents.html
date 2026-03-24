@@ -177,14 +177,14 @@
 </form>
 
 <div class="modal fade" id="addDocumentModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-lg document-form-modal">
     <form class="modal-content" method="post" action="{{ url_for('add_document') }}" id="addDocumentForm" data-doc-nos='{{ existing_doc_nos | tojson }}'>
       <input type="hidden" name="return_to" value="{{ request.full_path }}">
       <div class="modal-header"><h2 class="h5 modal-title">Add New Document</h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body d-grid gap-3">
         <div>
           <label class="form-label">Type *</label>
-          <div class="row row-cols-1 row-cols-md-3 g-2">
+          <div class="row row-cols-2 row-cols-md-4 g-2 document-checkbox-grid">
             {% for t in type_options %}
             <div class="col">
               <div class="form-check">
@@ -198,7 +198,7 @@
         </div>
         <div>
           <label class="form-label">Process *</label>
-          <div class="row row-cols-1 row-cols-md-3 g-2">
+          <div class="row row-cols-2 row-cols-md-4 g-2 document-checkbox-grid">
             {% for p in process_options %}
             <div class="col">
               <div class="form-check">
@@ -216,11 +216,11 @@
         </div>
         <div>
           <label class="form-label">Title *</label>
-          <textarea class="form-control" name="title" rows="2" required></textarea>
+          <textarea class="form-control" name="title" rows="4" required></textarea>
         </div>
         <div>
           <label class="form-label">Notes / Remarks</label>
-          <textarea class="form-control" name="remarks" rows="2" placeholder="Optional notes"></textarea>
+          <textarea class="form-control" name="remarks" rows="4" placeholder="Optional notes"></textarea>
         </div>
       </div>
       <div class="modal-footer">
@@ -267,7 +267,7 @@
 </div>
 
 <div class="modal fade" id="editDocumentModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-lg document-form-modal">
     <form class="modal-content" method="post" id="editDocumentForm">
       <input type="hidden" name="return_to" value="{{ request.full_path }}">
       <div class="modal-header"><h2 class="h5 modal-title">Re-open Document</h2><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
@@ -290,11 +290,11 @@
         </div>
         <div>
           <label class="form-label" for="editTitle">Title *</label>
-          <textarea class="form-control" name="title" id="editTitle" rows="2" required></textarea>
+          <textarea class="form-control" name="title" id="editTitle" rows="4" required></textarea>
         </div>
         <div>
           <label class="form-label" for="editRemarks">Notes / Remarks</label>
-          <textarea class="form-control" name="remarks" id="editRemarks" rows="2" placeholder="Optional notes"></textarea>
+          <textarea class="form-control" name="remarks" id="editRemarks" rows="4" placeholder="Optional notes"></textarea>
         </div>
       </div>
       <div class="modal-footer">
