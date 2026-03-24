@@ -168,3 +168,15 @@ body.documents-page-body main.container {
   padding-top: 0.4rem;
   padding-bottom: 0.4rem;
 }
+
+.document-form-modal {
+  max-width: min(960px, 94vw);
+}
+
+.document-checkbox-grid .form-check {
+  margin-bottom: 0;
+}
+
+.document-checkbox-grid .form-check-label {
+  font-size: 0.9rem;
+}
