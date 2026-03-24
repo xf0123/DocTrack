@@ -50,6 +50,7 @@
   <div class="filter-actions mt-2">
     <input class="form-control" type="text" name="q" id="searchFilter" value="{{ q }}" placeholder="Doc no or title" />
     <button class="btn btn-outline-secondary" type="button" id="clearFiltersBtn">Clear Filters</button>
+    <a class="btn btn-outline-success" href="{{ url_for('export_documents_csv') }}">Export CSV</a>
     <button class="btn btn-sm btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#addDocumentModal">Add New Document</button>
   </div>
 </form>
