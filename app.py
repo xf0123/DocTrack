@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import sqlite3
+import csv
+from io import StringIO
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
-from flask import Flask, abort, flash, g, redirect, render_template, request, session, url_for
+from flask import Flask, Response, abort, flash, g, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -158,6 +160,13 @@ def days_since(value: str | None) -> int | None:
     return (date.today() - dt).days
 
 
+def csv_date(value: str | None) -> str:
+    if not value:
+        return ""
+    dt = datetime.strptime(value, "%Y-%m-%d")
+    return dt.strftime("%d-%b-%Y")
+
+
 @app.context_processor
 def inject_globals() -> dict[str, Any]:
     return {
@@ -306,6 +315,45 @@ def documents() -> Any:
         page_size=page_size,
         total_docs=total_docs,
         days_since=days_since,
+    )
+
+
+@app.route("/documents/export-csv")
+def export_documents_csv() -> Any:
+    guard = login_required()
+    if guard:
+        return guard
+
+    db = get_db()
+    docs = db.execute(
+        """
+        SELECT type, process, doc_no, title, created_at, approved_date, scanned_date
+        FROM documents
+        ORDER BY created_at DESC, id DESC
+        """
+    ).fetchall()
+
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Type", "Process", "Doc No", "Title", "Added", "Approved", "Scanned"])
+
+    for doc in docs:
+        row = [
+            doc["type"],
+            doc["process"],
+            doc["doc_no"],
+            doc["title"],
+            csv_date(doc["created_at"]),
+            csv_date(doc["approved_date"]),
+            csv_date(doc["scanned_date"]),
+        ]
+        writer.writerow(row)
+
+    filename = f"documents_{date.today().strftime('%Y%m%d')}.csv"
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 
