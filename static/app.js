@@ -222,3 +222,161 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+// --- Kanban Logic ---
+document.addEventListener("DOMContentLoaded", () => {
+  const cards = document.querySelectorAll(".kanban-card");
+  const columns = document.querySelectorAll(".kanban-column");
+
+  cards.forEach(card => {
+    card.addEventListener("dragstart", () => {
+      card.classList.add("dragging");
+    });
+    card.addEventListener("dragend", () => {
+      card.classList.remove("dragging");
+    });
+  });
+
+  columns.forEach(column => {
+    column.addEventListener("dragover", e => {
+      e.preventDefault();
+      const afterElement = getDragAfterElement(column, e.clientY);
+      const draggable = document.querySelector(".dragging");
+      if (afterElement == null) {
+        column.appendChild(draggable);
+      } else {
+        column.insertBefore(draggable, afterElement);
+      }
+    });
+
+    column.addEventListener("drop", e => {
+      const draggable = document.querySelector(".dragging");
+      const taskId = draggable.dataset.id;
+      const newBasket = column.id;
+      
+      // Post change to backend without reloading
+      const formData = new FormData();
+      formData.append("action", "move");
+      formData.append("task_id", taskId);
+      formData.append("basket", newBasket);
+      
+      fetch("/projects", { method: "POST", body: formData });
+    });
+  });
+
+  function getDragAfterElement(container, y) {
+    const draggableElements = [...container.querySelectorAll(".kanban-card:not(.dragging)")];
+    return draggableElements.reduce((closest, child) => {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) {
+        return { offset: offset, element: child };
+      } else {
+        return closest;
+      }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+  }
+
+  // --- Background Reminder Poller ---
+  setInterval(checkReminders, 60000); // Check every minute
+  function checkReminders() {
+    fetch('/projects/reminders')
+      .then(r => r.json())
+      .then(data => {
+        data.reminders.forEach(rem => triggerReminderToast(rem));
+      });
+  }
+
+  function triggerReminderToast(rem) {
+    const container = document.getElementById("toastContainer");
+    const toastHtml = `
+      <div class="toast show text-bg-warning" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header text-dark">
+          <strong class="me-auto">Task Reminder</strong>
+          <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body text-dark">
+          ${rem.task}
+          <div class="mt-2">
+            <button class="btn btn-sm btn-light" onclick="snooze(${rem.id}, 1)">1 Day</button>
+            <button class="btn btn-sm btn-light" onclick="snooze(${rem.id}, 3)">3 Days</button>
+            <button class="btn btn-sm btn-light" onclick="snooze(${rem.id}, 7)">1 Week</button>
+          </div>
+        </div>
+      </div>
+    `;
+    container.insertAdjacentHTML('beforeend', toastHtml);
+  }
+});
+
+function snooze(taskId, days) {
+  const newDate = new Date();
+  newDate.setDate(newDate.getDate() + days);
+  
+  const formData = new FormData();
+  formData.append("action", "snooze");
+  formData.append("task_id", taskId);
+  formData.append("new_time", newDate.toISOString().slice(0, 16));
+  
+  fetch("/projects", { method: "POST", body: formData }).then(() => {
+    // Reload page to reflect color changes
+    window.location.reload(); 
+  });
+}
+
+// Add to your existing app.js
+document.addEventListener("DOMContentLoaded", () => {
+    
+    // --- Fix Tab Persistence on Reload (Attendance) ---
+    if(window.location.hash) {
+        const hash = window.location.hash;
+        const triggerEl = document.querySelector(`button[data-bs-target="${hash}"]`);
+        if (triggerEl) {
+            new bootstrap.Tab(triggerEl).show();
+        }
+    }
+
+    // --- Fix Snooze isolated trigger ---
+    window.snooze = function(taskId, days) {
+        const newDate = new Date();
+        newDate.setDate(newDate.getDate() + days);
+        
+        const formData = new FormData();
+        formData.append("action", "snooze");
+        formData.append("task_id", taskId);
+        formData.append("new_time", newDate.toISOString().slice(0, 16));
+        
+        fetch("/projects", { method: "POST", body: formData }).then(() => {
+            // Dismiss specific toast
+            const toastEl = document.getElementById(`toast-${taskId}`);
+            if (toastEl) {
+                const toast = bootstrap.Toast.getInstance(toastEl) || new bootstrap.Toast(toastEl);
+                toast.hide();
+            }
+            window.location.reload(); 
+        });
+    }
+
+    // --- Updated Reminder Check (Isolating Toasts) ---
+    function triggerReminderToast(rem) {
+        if(document.getElementById(`toast-${rem.id}`)) return; // Prevent duplicates
+
+        const container = document.getElementById("toastContainer");
+        const toastHtml = `
+          <div id="toast-${rem.id}" class="toast show text-bg-warning mb-2" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
+            <div class="toast-header text-dark">
+              <strong class="me-auto">Reminder: ${rem.task}</strong>
+              <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body text-dark">
+              <div class="mt-2 d-flex gap-1 flex-wrap">
+                <button class="btn btn-sm btn-light" onclick="snooze(${rem.id}, 1)">1 Day</button>
+                <button class="btn btn-sm btn-light" onclick="snooze(${rem.id}, 3)">3 Days</button>
+                <button class="btn btn-sm btn-light" onclick="snooze(${rem.id}, 7)">1 Wk</button>
+                <button class="btn btn-sm btn-light" onclick="snooze(${rem.id}, 14)">2 Wk</button>
+              </div>
+            </div>
+          </div>
+        `;
+        container.insertAdjacentHTML('beforeend', toastHtml);
+    }
+});

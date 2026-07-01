@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2>Project & Assignment Tracker</h2>
+  <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTaskModal">Add Task</button>
+</div>
+
+<div class="kanban-wrapper">
+  {% set baskets = ['focus', 'planned', 'parked', 'finished', 'deleted'] %}
+  
+  {% for basket in baskets %}
+  <div class="kanban-column" id="{{ basket }}">
+    <h5 class="text-capitalize border-bottom pb-2 mb-3">{{ basket }}</h5>
+    
+    {% for task in tasks %}
+      {% if task.basket == basket %}
+        {% set border_class = "reminder-gradient-none" %}
+        {% if task.reminder_active and task.reminder_time %}
+          {% set border_class = "reminder-gradient-warn" %} 
+          {% endif %}
+
+        <div class="kanban-card {{ border_class }}" draggable="true" data-id="{{ task.id }}" data-bs-toggle="modal" data-bs-target="#taskDetailModal{{ task.id }}">
+          <div class="fw-bold">{{ task.task }}</div>
+          <div class="small text-body-secondary mt-1">Due: {{ task.due_date or 'N/A' }}</div>
+        </div>
+
+        {% endif %}
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+
+<div class="modal fade" id="addTaskModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form class="modal-content" method="post" action="{{ url_for('projects') }}">
+      <input type="hidden" name="action" value="add">
+      <div class="modal-header">
+        <h5 class="modal-title">New Task</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body d-grid gap-2">
+        <input type="text" class="form-control" name="task" placeholder="Task Name" required>
+        <textarea class="form-control" name="description" placeholder="Description"></textarea>
+        <input type="date" class="form-control" name="due_date" title="Due Date">
+        
+        <div class="form-check form-switch mt-2">
+          <input class="form-check-input" type="checkbox" name="reminder_active" id="remActive">
+          <label class="form-check-label" for="remActive">Enable Follow-up Reminder</label>
+        </div>
+        <input type="datetime-local" class="form-control" name="reminder_time">
+        
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" type="submit">Save Task</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% set border_class = "reminder-gradient-none" %}
+{% if task.reminder_active and task.reminder_time %}
+    {% set rem_date = datetime.fromisoformat(task.reminder_time) %}
+    {% set diff = (rem_date - now).days %}
+    
+    {% if diff >= 60 %}
+        {% set border_class = "reminder-gradient-blue" %}
+    {% elif diff >= 30 %}
+        {% set border_class = "reminder-gradient-green" %}
+    {% elif diff >= 14 %}
+        {% set border_class = "reminder-gradient-yellow" %}
+    {% else %}
+        {% set border_class = "reminder-gradient-red" %}
+    {% endif %}
+{% endif %}
+
+<div class="kanban-card {{ border_class }} mb-2" draggable="true" data-id="{{ task.id }}" data-bs-toggle="modal" data-bs-target="#editProjectModal{{ task.id }}">
+    <div class="fw-bold">{{ task.task }}</div>
+    <div class="small text-body-secondary mt-1">Due: {{ task.due_date | format_date }}</div>
+</div>
+
+<div class="modal fade" id="editProjectModal{{ task.id }}" tabindex="-1">
+    </div>

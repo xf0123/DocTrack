@@ -29,6 +29,28 @@ def get_db() -> sqlite3.Connection:
         g.db.row_factory = sqlite3.Row
     return g.db
 
+@app.template_filter('format_date')
+def format_date(value):
+    if not value: return ""
+    try:
+        return datetime.strptime(value.split('T')[0], '%Y-%m-%d').strftime('%d-%b-%Y')
+    except:
+        return value
+
+@app.template_filter('format_datetime')
+def format_datetime(value):
+    if not value: return ""
+    try:
+        return datetime.fromisoformat(value).strftime('%d-%b-%Y %H:%M')
+    except:
+        return value
+
+# Make datetime available in templates for date math (Project Colors)
+@app.context_processor
+def inject_now():
+    return {'datetime': datetime, 'now': datetime.now()}
+
+
 
 @app.teardown_appcontext
 def close_db(_: Any) -> None:
@@ -70,6 +92,68 @@ def init_db() -> None:
         );
         """
     )
+
+    cur.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS executions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            activity TEXT NOT NULL,
+            protocol TEXT,
+            date_start TEXT NOT NULL,
+            date_end TEXT,
+            status TEXT NOT NULL, 
+            progress_note TEXT,
+            created_by TEXT,
+            created_at TEXT,
+            updated_at TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS samples (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sample_name TEXT NOT NULL,
+            handover_date TEXT NOT NULL,
+            expected_result_date TEXT,
+            status TEXT NOT NULL,
+            progress_note TEXT,
+            created_by TEXT,
+            created_at TEXT,
+            updated_at TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS projects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task TEXT NOT NULL,
+            description TEXT,
+            due_date TEXT,
+            status TEXT NOT NULL, 
+            progress_note TEXT,
+            reminder_active INTEGER DEFAULT 0,
+            reminder_time TEXT,
+            basket TEXT DEFAULT 'planned',
+            created_by TEXT,
+            created_at TEXT,
+            updated_at TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS personnel (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            initial TEXT UNIQUE NOT NULL,
+            is_active INTEGER DEFAULT 1
+        );
+
+        CREATE TABLE IF NOT EXISTS attendance (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            personnel_id INTEGER NOT NULL,
+            purpose TEXT NOT NULL,
+            date_start TEXT NOT NULL,
+            date_end TEXT,
+            note TEXT,
+            FOREIGN KEY(personnel_id) REFERENCES personnel(id)
+        );
+        """
+    )
+
+
 
     document_columns = {row[1] for row in cur.execute("PRAGMA table_info(documents)").fetchall()}
     if "link_path" not in document_columns:
@@ -440,7 +524,7 @@ def approve_document(doc_id: int) -> Any:
         abort(404)
     if doc["approved"]:
         flash("Document already approved.", "warning")
-        return redirect(url_for("documents"))
+        return redirect_to_documents_referrer()
 
     db.execute(
         "UPDATE documents SET approved = 1, approved_date = ?, approved_by = ? WHERE id = ?",
@@ -448,7 +532,7 @@ def approve_document(doc_id: int) -> Any:
     )
     db.commit()
     flash("Document approved.", "success")
-    return redirect(url_for("documents"))
+    return redirect_to_documents_referrer()
 
 
 @app.route("/documents/<int:doc_id>/scan", methods=["POST"])
@@ -480,7 +564,7 @@ def scan_document(doc_id: int) -> Any:
         return redirect(url_for("documents"))
     if doc["scanned"]:
         flash("Document already scanned.", "warning")
-        return redirect(url_for("documents"))
+        return redirect_to_documents_referrer()
 
     db.execute(
         "UPDATE documents SET scanned = 1, scanned_date = ?, scanned_by = ?, link_path = ? WHERE id = ?",
@@ -488,7 +572,7 @@ def scan_document(doc_id: int) -> Any:
     )
     db.commit()
     flash("Document marked as scanned.", "success")
-    return redirect(url_for("documents"))
+    return redirect_to_documents_referrer()
 
 
 @app.route("/setup", methods=["GET", "POST"])
@@ -566,6 +650,209 @@ def setup() -> Any:
     users = db.execute("SELECT * FROM users ORDER BY username ASC").fetchall()
     return render_template("setup.html", users=users)
 
+@app.route("/projects", methods=["GET", "POST"])
+def projects():
+    guard = login_required()
+    if guard: return guard
+    db = get_db()
+    
+    if request.method == "POST":
+        action = request.form.get("action")
+        if action == "add":
+            task = request.form.get("task")
+            desc = request.form.get("description")
+            due = request.form.get("due_date")
+            status = request.form.get("status", "progress")
+            note = request.form.get("progress_note", "")
+            rem_active = 1 if request.form.get("reminder_active") == 'on' else 0
+            rem_time = request.form.get("reminder_time", "")
+            db.execute("INSERT INTO projects (task, description, due_date, status, progress_note, reminder_active, reminder_time, basket, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                (task, desc, due, status, note, rem_active, rem_time, 'parked', user["username"], date.today().isoformat()))
+        elif action == "edit":
+            p_id = request.form.get("id")
+            rem_active = 1 if request.form.get("reminder_active") == 'on' else 0
+            db.execute("UPDATE projects SET task=?, description=?, due_date=?, status=?, progress_note=?, reminder_active=?, reminder_time=? WHERE id=?",
+                (request.form.get("task"), request.form.get("description"), request.form.get("due_date"), request.form.get("status"), request.form.get("progress_note"), rem_active, request.form.get("reminder_time"), p_id))            db.commit()
+            flash("Project task added.", "success")
+        elif action == "move":
+            task_id = request.form.get("task_id")
+            basket = request.form.get("basket")
+            db.execute("UPDATE projects SET basket = ? WHERE id = ?", (basket, task_id))
+            return Response("OK", status=200)
+        elif action == "snooze":
+            task_id = request.form.get("task_id")
+            new_time = request.form.get("new_time") # Expecting ISO format datetime
+            db.execute("UPDATE projects SET reminder_time = ? WHERE id = ?", (new_time, task_id))
+            return Response("OK", status=200)
+
+        db.commit()    
+        return redirect(url_for("projects"))
+        
+    tasks = db.execute("SELECT * FROM projects").fetchall()
+    return render_template("projects.html", tasks=tasks)
+
+@app.route("/projects/reminders")
+def get_reminders():
+    # Returns active reminders where time is past or near
+    db = get_db()
+    now = datetime.now().isoformat()
+    reminders = db.execute("SELECT id, task, reminder_time FROM projects WHERE reminder_active = 1 AND reminder_time <= ?", (now,)).fetchall()
+    return {"reminders": [dict(r) for r in reminders]}
+
+# ==========================================
+# 1. EXECUTION TRACKER ROUTE
+# ==========================================
+@app.route("/executions", methods=["GET", "POST"])
+def executions():
+    guard = login_required()
+    if guard: return guard
+    
+    db = get_db()
+    user = get_current_user()
+
+    if request.method == "POST":
+        action = request.form.get("action")
+        now_str = datetime.now().isoformat()
+        
+        if action == "add":
+            activity = request.form.get("activity")
+            protocol = request.form.get("protocol")
+            date_start = request.form.get("date_start")
+            date_end = request.form.get("date_end")
+            status = request.form.get("status") # 'done' or 'progress'
+            progress_note = request.form.get("progress_note", "")
+            
+            db.execute("INSERT INTO executions (activity, protocol, date_start, date_end, status, progress_note, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (activity, protocol, date_start, date_end, status, progress_note, user["username"], date.today().isoformat(), now_str))
+        elif action == "edit":
+            e_id = request.form.get("id")
+            db.execute("UPDATE executions SET activity=?, protocol=?, date_start=?, date_end=?, status=?, progress_note=?, updated_at=? WHERE id=?",
+                (request.form.get("activity"), request.form.get("protocol"), request.form.get("date_start"), request.form.get("date_end"), request.form.get("status"), request.form.get("progress_note"), now_str, e_id))
+        db.commit()
+        return redirect(url_for("executions"))
+            
+        return redirect(url_for("executions"))
+
+    # GET request - fetch all records
+    executions_list = db.execute("SELECT * FROM executions ORDER BY date_start DESC").fetchall()
+    return render_template("executions.html", executions=executions_list)
+
+
+# ==========================================
+# 2. SAMPLE TRACKER ROUTE
+# ==========================================
+@app.route("/samples", methods=["GET", "POST"])
+def samples():
+    guard = login_required()
+    if guard: return guard
+    
+    db = get_db()
+    user = get_current_user()
+
+    if request.method == "POST":
+        action = request.form.get("action")
+        
+        if action == "add":
+            sample_name = request.form.get("sample_name")
+            handover_date = request.form.get("handover_date")
+            expected_result_date = request.form.get("expected_result_date")
+            status = request.form.get("status") # 'done' or 'progress'
+            progress_note = request.form.get("progress_note", "")
+            
+            db.execute(
+                """INSERT INTO samples 
+                (sample_name, handover_date, expected_result_date, status, progress_note, created_by, created_at) 
+                VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (sample_name, handover_date, expected_result_date, status, progress_note, user["username"], date.today().isoformat())
+            )
+            db.commit()
+            flash("Sample logged successfully.", "success")
+            
+        return redirect(url_for("samples"))
+
+    # GET request - fetch all records
+    samples_list = db.execute("SELECT * FROM samples ORDER BY handover_date DESC").fetchall()
+    return render_template("samples.html", samples=samples_list)
+
+
+# ==========================================
+# 3. TEAM ATTENDANCE TRACKER ROUTE
+# ==========================================
+@app.route("/attendance", methods=["GET", "POST"])
+def attendance():
+    guard = login_required()
+    if guard: return guard
+    
+    db = get_db()
+    
+    if request.method == "POST":
+        action = request.form.get("action")
+        
+        if action == "add_personnel":
+            initial = request.form.get("initial").upper() # Removed length limit in HTML
+            db.execute("INSERT INTO personnel (initial, is_active) VALUES (?, 1)", (initial,))
+            db.commit()
+            return redirect(url_for("attendance", _anchor="personnel")) # Stay on tab
+        
+        elif action == "toggle_personnel":
+            p_id = request.form.get("personnel_id")
+            current_status = request.form.get("is_active")
+            new_status = 0 if current_status == '1' else 1
+            db.execute("UPDATE personnel SET is_active = ? WHERE id = ?", (new_status, p_id))
+            db.commit()
+            flash("Personnel status updated.", "success")
+            return redirect(url_for("attendance", _anchor="personnel"))
+
+        elif action == "add_attendance":
+            personnel_id = request.form.get("personnel_id")
+            purpose = request.form.get("purpose") # sick, annual half, annual full, collective, special
+            date_start = request.form.get("date_start")
+            date_end = request.form.get("date_end")
+            note = request.form.get("note", "")
+            
+            db.execute(
+                """INSERT INTO attendance 
+                (personnel_id, purpose, date_start, date_end, note) 
+                VALUES (?, ?, ?, ?, ?)""",
+                (personnel_id, purpose, date_start, date_end, note)
+            )
+            db.commit()
+            flash("Attendance record saved.", "success")
+        
+        return redirect(url_for("attendance"))
+
+    # ---- GET Request (Submenu 3: Summary & Rendering) ----
+    
+    # 1. Get all personnel for dropdowns and lists
+    personnel_list = db.execute("SELECT * FROM personnel ORDER BY initial ASC").fetchall()
+    
+    # 2. Handle Filters for the Summary Table
+    active_only = request.args.get("active_only", "0")
+    year_filter = request.args.get("year", str(date.today().year))
+    
+    # Base query joining attendance with personnel initials
+    query = """
+        SELECT a.*, p.initial, p.is_active
+        FROM attendance a 
+        JOIN personnel p ON a.personnel_id = p.id
+        WHERE strftime('%Y', a.date_start) = ?
+    """
+    params = [year_filter]
+    
+    # Apply active toggle filter
+    if active_only == "1":
+        query += " AND p.is_active = 1"
+        
+    query += " ORDER BY a.date_start DESC"
+    attendance_records = db.execute(query, params).fetchall()
+
+    return render_template(
+        "attendance.html", 
+        personnel=personnel_list, 
+        attendance=attendance_records,
+        year_filter=year_filter,
+        active_only=active_only
+    )
 
 if __name__ == "__main__":
     init_db()
