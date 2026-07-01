@@ -254,3 +254,54 @@ body.documents-page-body main.container {
 /* Clickable Table Rows */
 .clickable-row { cursor: pointer; transition: background-color 0.2s; }
 .clickable-row:hover { background-color: rgba(255,255,255,0.05) !important; }
+
+/* Table sizes */
+.table-sm-content td, .table-sm-content th { font-size: 0.85rem; }
+
+/* Kanban Width fix */
+.kanban-wrapper {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: 1rem;
+  min-height: 70vh;
+}
+.kanban-column {
+  flex: 0 0 calc(33.333% - 0.66rem);
+  min-width: 320px;
+  background-color: var(--bs-gray-900);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+}
+.kanban-card {
+  background-color: var(--bs-gray-800);
+  border: 1px solid var(--bs-gray-700);
+  border-radius: 0.25rem;
+  padding: 0.75rem;
+  cursor: grab;
+}
+.kanban-card:active { cursor: grabbing; }
+
+/* Project Priority Colors */
+.reminder-gradient-none { border-left: 4px solid var(--bs-secondary); }
+.reminder-gradient-blue { border-left: 4px solid #0d6efd; }
+.reminder-gradient-green { border-left: 4px solid #198754; }
+.reminder-gradient-yellow { border-left: 4px solid #ffc107; }
+.reminder-gradient-red { border-left: 4px solid #dc3545; }
+
+.clickable-row { cursor: pointer; transition: background-color 0.2s; }
+.clickable-row:hover { background-color: rgba(255,255,255,0.05) !important; }
+
+/* Fix Scrolling in Kanban */
+.kanban-column {
+    max-height: 70vh; 
+    overflow-y: auto; 
+    flex: 0 0 calc(33.333% - 0.66rem);
+}
+
+/* Fix Reminder Popup Colors */
+.toast-body { color: white !important; }
+.toast-header { color: black !important; }
+
+/* Improve Attendance Multi-select look */
+select[multiple] { height: 100px; padding: 5px; }

@@ -16,18 +16,6 @@ DATA_DIR = BASE_DIR / "data"
 DB_PATH = DATA_DIR / "doctrack.db"
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "change-this-secret-key"
-
-
-TYPE_OPTIONS = ["Protocol", "Report", "CRF", "Dev", "QRA", "Other"]
-PROCESS_OPTIONS = ["Cal", "Qual", "PV", "CV", "APS", "TV", "CSV", "Other"]
-
-
-def get_db() -> sqlite3.Connection:
-    if "db" not in g:
-        g.db = sqlite3.connect(DB_PATH)
-        g.db.row_factory = sqlite3.Row
-    return g.db
 
 @app.template_filter('format_date')
 def format_date(value):
@@ -45,12 +33,22 @@ def format_datetime(value):
     except:
         return value
 
-# Make datetime available in templates for date math (Project Colors)
 @app.context_processor
 def inject_now():
     return {'datetime': datetime, 'now': datetime.now()}
 
+app.config["SECRET_KEY"] = "change-this-secret-key"
 
+
+TYPE_OPTIONS = ["Protocol", "Report", "CRF", "Dev", "QRA", "Other"]
+PROCESS_OPTIONS = ["Cal", "Qual", "PV", "CV", "APS", "TV", "CSV", "Other"]
+
+
+def get_db() -> sqlite3.Connection:
+    if "db" not in g:
+        g.db = sqlite3.connect(DB_PATH)
+        g.db.row_factory = sqlite3.Row
+    return g.db
 
 @app.teardown_appcontext
 def close_db(_: Any) -> None:
@@ -158,6 +156,8 @@ def init_db() -> None:
     document_columns = {row[1] for row in cur.execute("PRAGMA table_info(documents)").fetchall()}
     if "link_path" not in document_columns:
         cur.execute("ALTER TABLE documents ADD COLUMN link_path TEXT")
+        cur.execute("ALTER TABLE executions ADD COLUMN updated_at TEXT;")
+        cur.execute("ALTER TABLE samples ADD COLUMN updated_at TEXT;")
     if "remarks" not in document_columns:
         cur.execute("ALTER TABLE documents ADD COLUMN remarks TEXT")
 
@@ -261,66 +261,88 @@ def inject_globals() -> dict[str, Any]:
 
 
 @app.route("/")
-def home() -> Any:
-    if "user_id" in session:
-        return redirect(url_for("dashboard"))
-    return redirect(url_for("login"))
-
-
-@app.route("/login", methods=["GET", "POST"])
-def login() -> Any:
-    if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "")
-        user = get_db().execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
-
-        if not user or not check_password_hash(user["password_hash"], password):
-            flash("Invalid username or password.", "danger")
-            return render_template("login.html")
-
-        session.clear()
-        session["user_id"] = user["id"]
-
-        backup_database_if_needed()
-
-        return redirect(url_for("dashboard"))
-    return render_template("login.html")
-
-
-@app.route("/logout")
-def logout() -> Any:
-    session.clear()
-    return redirect(url_for("login"))
-
-
 @app.route("/dashboard")
-def dashboard() -> Any:
+def dashboard():
     guard = login_required()
-    if guard:
-        return guard
-
+    if guard: return guard
     db = get_db()
-    on_circulation = db.execute(
-        "SELECT COUNT(*) as count FROM documents WHERE approved = 0"
-    ).fetchone()["count"]
-    approved_not_scanned = db.execute(
-        "SELECT COUNT(*) as count FROM documents WHERE approved = 1 AND scanned = 0"
-    ).fetchone()["count"]
+    today = date.today()
+    
+    # 1. Document Data
+    docs = db.execute("SELECT * FROM documents ORDER BY id DESC").fetchall()
+    
+    on_circulation = []
+    approved_not_scanned = []
+    
+    for d in docs:
+        # Convert to a dictionary first to prevent "IndexError" crashes
+        d_dict = dict(d) 
+        
+        # Safely look for whatever date column exists
+        doc_date_str = d_dict.get('date') or d_dict.get('upload_date') or d_dict.get('created_at')
+        
+        if not d_dict.get('approved'):
+            days = 0
+            if doc_date_str:
+                try:
+                    d_date = datetime.strptime(doc_date_str.split('T')[0], '%Y-%m-%d').date()
+                    days = (today - d_date).days
+                except: pass
+                
+            d_dict['days'] = days
+            # Ensure we have a dummy date if formatting requires it in HTML
+            if not doc_date_str: d_dict['date'] = '-' 
+            on_circulation.append(d_dict)
+            
+        elif d_dict.get('approved') and not d_dict.get('scanned'):
+            days = 0
+            app_date_str = d_dict.get('approved_date')
+            if app_date_str:
+                try:
+                    a_date = datetime.strptime(app_date_str.split('T')[0], '%Y-%m-%d').date()
+                    days = (today - a_date).days
+                except: pass
+                
+            d_dict['days'] = days
+            approved_not_scanned.append(d_dict)
 
-    on_circulation_rows = db.execute(
-        "SELECT id, doc_no, title, created_at FROM documents WHERE approved = 0 ORDER BY created_at ASC"
-    ).fetchall()
-    approved_not_scanned_rows = db.execute(
-        "SELECT id, doc_no, title, approved_date FROM documents WHERE approved = 1 AND scanned = 0 ORDER BY approved_date ASC"
-    ).fetchall()
+    # 2. Execution Data
+    executions_data = db.execute("SELECT * FROM executions ORDER BY date_start DESC").fetchall()
+    exec_ongoing = [dict(e) for e in executions_data if e['status'] == 'progress']
+    exec_total = len(exec_ongoing)
+    
+    exec_7d = []
+    for e in exec_ongoing:
+        if e.get('date_start'):
+            try:
+                start_date = datetime.strptime(e['date_start'].split('T')[0], '%Y-%m-%d').date()
+                if (today - start_date).days > 7:
+                    exec_7d.append(e)
+            except: pass
+
+    # 3. Sample Data
+    samples_data = db.execute("SELECT * FROM samples ORDER BY handover_date DESC").fetchall()
+    samp_ongoing = [dict(s) for s in samples_data if s['status'] == 'progress']
+    sample_total = len(samp_ongoing)
+    
+    samp_7d, samp_14d, samp_21d, samp_30d = [], [], [], []
+    for s in samp_ongoing:
+        if s.get('handover_date'):
+            try:
+                start_date = datetime.strptime(s['handover_date'].split('T')[0], '%Y-%m-%d').date()
+                days_passed = (today - start_date).days
+                if days_passed > 30: samp_30d.append(s)
+                elif days_passed > 21: samp_21d.append(s)
+                elif days_passed > 14: samp_14d.append(s)
+                elif days_passed > 7: samp_7d.append(s)
+            except: pass
 
     return render_template(
-        "dashboard.html",
+        "dashboard.html", 
         on_circulation=on_circulation,
         approved_not_scanned=approved_not_scanned,
-        on_circulation_rows=on_circulation_rows,
-        approved_not_scanned_rows=approved_not_scanned_rows,
-        days_since=days_since,
+        exec_total=exec_total, exec_7d=exec_7d,
+        sample_total=sample_total, samp_7d=samp_7d, samp_14d=samp_14d, samp_21d=samp_21d, samp_30d=samp_30d
     )
 
 
@@ -659,41 +681,36 @@ def projects():
     if request.method == "POST":
         action = request.form.get("action")
         if action == "add":
-            task = request.form.get("task")
-            desc = request.form.get("description")
-            due = request.form.get("due_date")
-            status = request.form.get("status", "progress")
-            note = request.form.get("progress_note", "")
             rem_active = 1 if request.form.get("reminder_active") == 'on' else 0
-            rem_time = request.form.get("reminder_time", "")
-            db.execute("INSERT INTO projects (task, description, due_date, status, progress_note, reminder_active, reminder_time, basket, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                (task, desc, due, status, note, rem_active, rem_time, 'parked', user["username"], date.today().isoformat()))
+            db.execute(
+                "INSERT INTO projects (task, description, due_date, reminder_active, reminder_time, basket, created_by, created_at, status) VALUES (?,?,?,?,?,'parked',?,?,'')",
+                (request.form.get("task"), request.form.get("description"), request.form.get("due_date"), rem_active, request.form.get("reminder_time"), get_current_user()["username"], date.today().isoformat())
+            )
+            flash("Project task added to Parked.", "success")
         elif action == "edit":
-            p_id = request.form.get("id")
             rem_active = 1 if request.form.get("reminder_active") == 'on' else 0
-            db.execute("UPDATE projects SET task=?, description=?, due_date=?, status=?, progress_note=?, reminder_active=?, reminder_time=? WHERE id=?",
-                (request.form.get("task"), request.form.get("description"), request.form.get("due_date"), request.form.get("status"), request.form.get("progress_note"), rem_active, request.form.get("reminder_time"), p_id))            db.commit()
-            flash("Project task added.", "success")
+            db.execute(
+                "UPDATE projects SET task=?, description=?, due_date=?, reminder_active=?, reminder_time=? WHERE id=?",
+                (request.form.get("task"), request.form.get("description"), request.form.get("due_date"), rem_active, request.form.get("reminder_time"), request.form.get("id"))
+            )
         elif action == "move":
-            task_id = request.form.get("task_id")
-            basket = request.form.get("basket")
-            db.execute("UPDATE projects SET basket = ? WHERE id = ?", (basket, task_id))
+            db.execute("UPDATE projects SET basket = ? WHERE id = ?", (request.form.get("basket"), request.form.get("task_id")))
+            db.commit()
             return Response("OK", status=200)
         elif action == "snooze":
-            task_id = request.form.get("task_id")
-            new_time = request.form.get("new_time") # Expecting ISO format datetime
-            db.execute("UPDATE projects SET reminder_time = ? WHERE id = ?", (new_time, task_id))
+            db.execute("UPDATE projects SET reminder_time = ? WHERE id = ?", (request.form.get("new_time"), request.form.get("task_id")))
+            db.commit()
             return Response("OK", status=200)
-
-        db.commit()    
+            
+        db.commit()
         return redirect(url_for("projects"))
         
     tasks = db.execute("SELECT * FROM projects").fetchall()
     return render_template("projects.html", tasks=tasks)
 
+
 @app.route("/projects/reminders")
 def get_reminders():
-    # Returns active reminders where time is past or near
     db = get_db()
     now = datetime.now().isoformat()
     reminders = db.execute("SELECT id, task, reminder_time FROM projects WHERE reminder_active = 1 AND reminder_time <= ?", (now,)).fetchall()
@@ -706,7 +723,6 @@ def get_reminders():
 def executions():
     guard = login_required()
     if guard: return guard
-    
     db = get_db()
     user = get_current_user()
 
@@ -715,27 +731,38 @@ def executions():
         now_str = datetime.now().isoformat()
         
         if action == "add":
-            activity = request.form.get("activity")
-            protocol = request.form.get("protocol")
-            date_start = request.form.get("date_start")
-            date_end = request.form.get("date_end")
-            status = request.form.get("status") # 'done' or 'progress'
-            progress_note = request.form.get("progress_note", "")
-            
-            db.execute("INSERT INTO executions (activity, protocol, date_start, date_end, status, progress_note, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (activity, protocol, date_start, date_end, status, progress_note, user["username"], date.today().isoformat(), now_str))
+            db.execute(
+                "INSERT INTO executions (activity, protocol, date_start, date_end, status, progress_note, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (request.form.get("activity"), request.form.get("protocol"), request.form.get("date_start"), request.form.get("date_end"), request.form.get("status"), request.form.get("progress_note"), user["username"], date.today().isoformat(), now_str)
+            )
+            flash("Execution tracked successfully.", "success")
         elif action == "edit":
-            e_id = request.form.get("id")
-            db.execute("UPDATE executions SET activity=?, protocol=?, date_start=?, date_end=?, status=?, progress_note=?, updated_at=? WHERE id=?",
-                (request.form.get("activity"), request.form.get("protocol"), request.form.get("date_start"), request.form.get("date_end"), request.form.get("status"), request.form.get("progress_note"), now_str, e_id))
+            db.execute(
+                "UPDATE executions SET activity=?, protocol=?, date_start=?, date_end=?, status=?, progress_note=?, updated_at=? WHERE id=?",
+                (request.form.get("activity"), request.form.get("protocol"), request.form.get("date_start"), request.form.get("date_end"), request.form.get("status"), request.form.get("progress_note"), now_str, request.form.get("id"))
+            )
+            flash("Execution updated.", "success")
+            
         db.commit()
         return redirect(url_for("executions"))
-            
-        return redirect(url_for("executions"))
 
-    # GET request - fetch all records
-    executions_list = db.execute("SELECT * FROM executions ORDER BY date_start DESC").fetchall()
-    return render_template("executions.html", executions=executions_list)
+    status_filter = request.args.get("status", "both")
+    search_query = request.args.get("search", "")
+    sort_by = "date_start" # Hardcoded
+    
+    query = "SELECT * FROM executions WHERE 1=1"
+    params = []
+    
+    if status_filter != "both":
+        query += " AND status = ?"
+        params.append(status_filter)
+    if search_query:
+        query += " AND activity LIKE ?"
+        params.append(f"%{search_query}%")
+        
+    query += f" ORDER BY {sort_by} DESC"
+    executions_list = db.execute(query, params).fetchall()
+    return render_template("executions.html", executions=executions_list, status=status_filter, search=search_query)
 
 
 # ==========================================
@@ -745,34 +772,51 @@ def executions():
 def samples():
     guard = login_required()
     if guard: return guard
-    
     db = get_db()
     user = get_current_user()
 
     if request.method == "POST":
         action = request.form.get("action")
+        now_str = datetime.now().isoformat()
         
         if action == "add":
-            sample_name = request.form.get("sample_name")
-            handover_date = request.form.get("handover_date")
-            expected_result_date = request.form.get("expected_result_date")
-            status = request.form.get("status") # 'done' or 'progress'
-            progress_note = request.form.get("progress_note", "")
-            
             db.execute(
-                """INSERT INTO samples 
-                (sample_name, handover_date, expected_result_date, status, progress_note, created_by, created_at) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (sample_name, handover_date, expected_result_date, status, progress_note, user["username"], date.today().isoformat())
+                "INSERT INTO samples (sample_name, handover_date, expected_result_date, status, progress_note, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (request.form.get("sample_name"), request.form.get("handover_date"), request.form.get("expected_result_date"), request.form.get("status"), request.form.get("progress_note"), user["username"], date.today().isoformat(), now_str)
             )
-            db.commit()
             flash("Sample logged successfully.", "success")
+        elif action == "edit":
+            db.execute(
+                "UPDATE samples SET sample_name=?, handover_date=?, expected_result_date=?, status=?, progress_note=?, updated_at=? WHERE id=?",
+                (request.form.get("sample_name"), request.form.get("handover_date"), request.form.get("expected_result_date"), request.form.get("status"), request.form.get("progress_note"), now_str, request.form.get("id"))
+            )
+            flash("Sample updated.", "success")
             
+        db.commit()
         return redirect(url_for("samples"))
 
-    # GET request - fetch all records
-    samples_list = db.execute("SELECT * FROM samples ORDER BY handover_date DESC").fetchall()
-    return render_template("samples.html", samples=samples_list)
+    # GET Request: Handle Search, Filter, and Sort
+    status_filter = request.args.get("status", "both")
+    search_query = request.args.get("search", "")
+    sort_by = request.args.get("sort", "handover_date") # Default sort
+    
+    query = "SELECT * FROM samples WHERE 1=1"
+    params = []
+    
+    if status_filter != "both":
+        query += " AND status = ?"
+        params.append(status_filter)
+    if search_query:
+        query += " AND sample_name LIKE ?"
+        params.append(f"%{search_query}%")
+        
+    # Whitelist sorting to prevent errors
+    allowed_sorts = ['handover_date', 'expected_result_date']
+    sort_col = sort_by if sort_by in allowed_sorts else 'handover_date'
+    query += f" ORDER BY {sort_col} DESC"
+    
+    samples_list = db.execute(query, params).fetchall()
+    return render_template("samples.html", samples=samples_list, status=status_filter, search=search_query, sort=sort_by)
 
 
 # ==========================================
@@ -782,66 +826,66 @@ def samples():
 def attendance():
     guard = login_required()
     if guard: return guard
-    
     db = get_db()
     
     if request.method == "POST":
         action = request.form.get("action")
         
         if action == "add_personnel":
-            initial = request.form.get("initial").upper() # Removed length limit in HTML
-            db.execute("INSERT INTO personnel (initial, is_active) VALUES (?, 1)", (initial,))
-            db.commit()
-            return redirect(url_for("attendance", _anchor="personnel")) # Stay on tab
+            initial = request.form.get("initial").upper()
+            try:
+                db.execute("INSERT INTO personnel (initial, is_active) VALUES (?, 1)", (initial,))
+                db.commit()
+            except sqlite3.IntegrityError:
+                pass
+            return redirect(url_for("attendance", _anchor="personnel"))
         
         elif action == "toggle_personnel":
-            p_id = request.form.get("personnel_id")
-            current_status = request.form.get("is_active")
-            new_status = 0 if current_status == '1' else 1
-            db.execute("UPDATE personnel SET is_active = ? WHERE id = ?", (new_status, p_id))
+            new_status = 0 if request.form.get("is_active") == '1' else 1
+            db.execute("UPDATE personnel SET is_active = ? WHERE id = ?", (new_status, request.form.get("personnel_id")))
             db.commit()
-            flash("Personnel status updated.", "success")
             return redirect(url_for("attendance", _anchor="personnel"))
 
         elif action == "add_attendance":
-            personnel_id = request.form.get("personnel_id")
-            purpose = request.form.get("purpose") # sick, annual half, annual full, collective, special
-            date_start = request.form.get("date_start")
-            date_end = request.form.get("date_end")
-            note = request.form.get("note", "")
-            
             db.execute(
-                """INSERT INTO attendance 
-                (personnel_id, purpose, date_start, date_end, note) 
-                VALUES (?, ?, ?, ?, ?)""",
-                (personnel_id, purpose, date_start, date_end, note)
+                "INSERT INTO attendance (personnel_id, purpose, date_start, date_end, note) VALUES (?, ?, ?, ?, ?)",
+                (request.form.get("personnel_id"), request.form.get("purpose"), request.form.get("date_start"), request.form.get("date_end"), request.form.get("note", ""))
             )
             db.commit()
-            flash("Attendance record saved.", "success")
-        
-        return redirect(url_for("attendance"))
+            return redirect(url_for("attendance"))
+            
+        elif action == "edit_attendance":
+            db.execute(
+                "UPDATE attendance SET purpose=?, date_start=?, date_end=?, note=? WHERE id=?",
+                (request.form.get("purpose"), request.form.get("date_start"), request.form.get("date_end"), request.form.get("note", ""), request.form.get("id"))
+            )
+            db.commit()
+            return redirect(url_for("attendance"))
 
-    # ---- GET Request (Submenu 3: Summary & Rendering) ----
-    
-    # 1. Get all personnel for dropdowns and lists
     personnel_list = db.execute("SELECT * FROM personnel ORDER BY initial ASC").fetchall()
     
-    # 2. Handle Filters for the Summary Table
-    active_only = request.args.get("active_only", "0")
-    year_filter = request.args.get("year", str(date.today().year))
+    # --- AUTOMATIC YEAR EXTRACTION LOGIC ---
+    years_data = db.execute("SELECT DISTINCT strftime('%Y', date_start) as year FROM attendance WHERE date_start IS NOT NULL ORDER BY year DESC").fetchall()
+    available_years = [y['year'] for y in years_data if y['year']]
     
-    # Base query joining attendance with personnel initials
-    query = """
-        SELECT a.*, p.initial, p.is_active
-        FROM attendance a 
-        JOIN personnel p ON a.personnel_id = p.id
-        WHERE strftime('%Y', a.date_start) = ?
-    """
+    current_year = str(date.today().year)
+    if current_year not in available_years:
+        available_years.append(current_year)
+        available_years.sort(reverse=True)
+        
+    year_filter = request.args.get("year", current_year)
+    active_only = request.args.get("active_only", "0")
+    initials_filter = request.args.getlist("initials") 
+    
+    query = "SELECT a.*, p.initial, p.is_active FROM attendance a JOIN personnel p ON a.personnel_id = p.id WHERE strftime('%Y', a.date_start) = ?"
     params = [year_filter]
     
-    # Apply active toggle filter
     if active_only == "1":
         query += " AND p.is_active = 1"
+    if initials_filter:
+        placeholders = ','.join('?' for _ in initials_filter)
+        query += f" AND p.initial IN ({placeholders})"
+        params.extend(initials_filter)
         
     query += " ORDER BY a.date_start DESC"
     attendance_records = db.execute(query, params).fetchall()
@@ -851,8 +895,23 @@ def attendance():
         personnel=personnel_list, 
         attendance=attendance_records,
         year_filter=year_filter,
-        active_only=active_only
+        active_only=active_only,
+        initials_filter=initials_filter,
+        available_years=available_years  # Sent to HTML
     )
+
+@app.route("/dashboard/stats")
+def stats():
+    # Example logic
+    overdue = db.execute("SELECT count(*) FROM executions WHERE status='progress' AND date_start < date('now', '-7 days')").fetchone()[0]
+    return render_template("stats.html", overdue=overdue)
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    flash("You have been logged out.", "info")
+    # If your login page is called something else (like 'index'), change 'login' below to that name
+    return redirect(url_for("login"))
 
 if __name__ == "__main__":
     init_db()

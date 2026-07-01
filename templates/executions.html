@@ -8,10 +8,26 @@
     </button>
 </div>
 
+<form class="row g-2 mb-3 align-items-center" method="GET" action="{{ url_for('executions') }}">
+    <div class="col-auto">
+        <input type="text" name="search" class="form-control" placeholder="Search activity..." value="{{ search }}" onchange="this.form.submit()">
+    </div>
+    <div class="col-auto">
+        <select name="status" class="form-select" onchange="this.form.submit()">
+            <option value="both" {% if status == 'both' %}selected{% endif %}>Status: Both</option>
+            <option value="done" {% if status == 'done' %}selected{% endif %}>Done</option>
+            <option value="progress" {% if status == 'progress' %}selected{% endif %}>In Progress</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <a href="{{ url_for('executions') }}" class="btn btn-outline-secondary">Clear</a>
+    </div>
+</form>
+
 <div class="card bg-body-tertiary">
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 table-sm-content">
                 <thead>
                     <tr>
                         <th>Activity</th>
@@ -20,29 +36,28 @@
                         <th>End Date</th>
                         <th>Status</th>
                         <th>Progress Note</th>
-                        <th>Logged By</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for exec in executions %}
-                    <tr>
+                    <tr class="clickable-row" data-bs-toggle="modal" data-bs-target="#editExecModal{{ exec.id }}">
                         <td class="fw-bold">{{ exec.activity }}</td>
                         <td>{{ exec.protocol }}</td>
-                        <td>{{ exec.date_start }}</td>
-                        <td>{{ exec.date_end or '-' }}</td>
+                        <td>{{ exec.date_start | format_date }}</td>
+                        <td>{{ exec.date_end | format_date }}</td>
                         <td>
                             {% if exec.status == 'done' %}
                                 <span class="badge text-bg-success">Done</span>
                             {% else %}
                                 <span class="badge text-bg-warning">In Progress</span>
                             {% endif %}
+                            <div class="mt-1 text-muted" style="font-size: 0.7rem;">{{ exec.updated_at | format_datetime }}</div>
                         </td>
                         <td>{{ exec.progress_note or '-' }}</td>
-                        <td class="small text-secondary">{{ exec.created_by }}</td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-3">No executions logged yet.</td>
+                        <td colspan="6" class="text-center text-muted py-3">No executions logged yet.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -81,15 +96,15 @@
                 <div>
                     <label class="form-label d-block">Status</label>
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input status-radio" type="radio" name="status" id="execDone" value="done" required>
-                        <label class="form-check-label" for="execDone">Done</label>
+                        <input class="form-check-input status-radio" type="radio" name="status" value="done" required>
+                        <label class="form-check-label">Done</label>
                     </div>
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input status-radio" type="radio" name="status" id="execProg" value="progress">
-                        <label class="form-check-label" for="execProg">In Progress</label>
+                        <input class="form-check-input status-radio" type="radio" name="status" value="progress">
+                        <label class="form-check-label">In Progress</label>
                     </div>
                 </div>
-                <div class="progress-note-container" style="display: none;">
+                <div>
                     <label class="form-label">Progress Note</label>
                     <textarea class="form-control" name="progress_note" rows="2"></textarea>
                 </div>
@@ -101,41 +116,6 @@
     </div>
 </div>
 
-<script>
-    // Toggle progress textarea visibility based on radio selection
-    document.querySelectorAll('#addExecutionModal .status-radio').forEach(radio => {
-        radio.addEventListener('change', function() {
-            const container = document.querySelector('#addExecutionModal .progress-note-container');
-            container.style.display = this.value === 'progress' ? 'block' : 'none';
-        });
-    });
-</script>
-{% endblock %}
-
-<table class="table table-hover align-middle mb-0 table-sm-content">
-    <thead>
-        </thead>
-    <tbody>
-        {% for exec in executions %}
-        <tr class="clickable-row" data-bs-toggle="modal" data-bs-target="#editExecModal{{ exec.id }}">
-            <td class="fw-bold">{{ exec.activity }}</td>
-            <td>{{ exec.protocol }}</td>
-            <td>{{ exec.date_start | format_date }}</td>
-            <td>{{ exec.date_end | format_date }}</td>
-            <td>
-                {% if exec.status == 'done' %}
-                    <span class="badge text-bg-success">Done</span>
-                {% else %}
-                    <span class="badge text-bg-warning">In Progress</span>
-                {% endif %}
-                <div class="mt-1 text-muted" style="font-size: 0.7rem;">{{ exec.updated_at | format_datetime }}</div>
-            </td>
-            <td>{{ exec.progress_note or '-' }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-
 {% for exec in executions %}
 <div class="modal fade" id="editExecModal{{ exec.id }}" tabindex="-1">
     <div class="modal-dialog">
@@ -144,9 +124,48 @@
             <input type="hidden" name="id" value="{{ exec.id }}">
             <div class="modal-header">
                 <h5 class="modal-title">Edit Execution</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button> 
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            </form>
+            <div class="modal-body d-grid gap-3">
+                <div>
+                    <label class="form-label">Activity</label>
+                    <input type="text" class="form-control" name="activity" value="{{ exec.activity }}" required>
+                </div>
+                <div>
+                    <label class="form-label">Protocol Used</label>
+                    <input type="text" class="form-control" name="protocol" value="{{ exec.protocol }}">
+                </div>
+                <div class="row">
+                    <div class="col-6">
+                        <label class="form-label">Start Date *</label>
+                        <input type="date" class="form-control" name="date_start" value="{{ exec.date_start }}" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">End Date</label>
+                        <input type="date" class="form-control" name="date_end" value="{{ exec.date_end }}">
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label d-block">Status</label>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="status" value="done" {% if exec.status == 'done' %}checked{% endif %} required>
+                        <label class="form-check-label">Done</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="status" value="progress" {% if exec.status == 'progress' %}checked{% endif %}>
+                        <label class="form-check-label">In Progress</label>
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label">Progress Note</label>
+                    <textarea class="form-control" name="progress_note" rows="2">{{ exec.progress_note }}</textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-warning text-dark" type="submit">Update</button>
+            </div>
+        </form>
     </div>
 </div>
 {% endfor %}
+{% endblock %}

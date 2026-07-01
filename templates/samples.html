@@ -8,10 +8,32 @@
     </button>
 </div>
 
+<form class="row g-2 mb-3 align-items-center" method="GET" action="{{ url_for('samples') }}">
+    <div class="col-auto">
+        <input type="text" name="search" class="form-control" placeholder="Search name..." value="{{ search }}" onchange="this.form.submit()">
+    </div>
+    <div class="col-auto">
+        <select name="status" class="form-select" onchange="this.form.submit()">
+            <option value="both" {% if status == 'both' %}selected{% endif %}>Status: Both</option>
+            <option value="done" {% if status == 'done' %}selected{% endif %}>Done</option>
+            <option value="progress" {% if status == 'progress' %}selected{% endif %}>In Progress</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <select name="sort" class="form-select" onchange="this.form.submit()">
+            <option value="handover_date" {% if sort == 'handover_date' %}selected{% endif %}>Sort: Handover Date</option>
+            <option value="expected_result_date" {% if sort == 'expected_result_date' %}selected{% endif %}>Sort: Expected Result</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <a href="{{ url_for('samples') }}" class="btn btn-outline-secondary">Clear</a>
+    </div>
+</form>
+
 <div class="card bg-body-tertiary">
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0 table-sm-content">
                 <thead>
                     <tr>
                         <th>Activity / Sample Name</th>
@@ -19,28 +41,27 @@
                         <th>Expected Result</th>
                         <th>LHA Status</th>
                         <th>Progress Note</th>
-                        <th>Logged By</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for sample in samples %}
-                    <tr>
+                    <tr class="clickable-row" data-bs-toggle="modal" data-bs-target="#editSampleModal{{ sample.id }}">
                         <td class="fw-bold">{{ sample.sample_name }}</td>
-                        <td>{{ sample.handover_date }}</td>
-                        <td>{{ sample.expected_result_date or '-' }}</td>
+                        <td>{{ sample.handover_date | format_date }}</td>
+                        <td>{{ sample.expected_result_date | format_date }}</td>
                         <td>
                             {% if sample.status == 'done' %}
                                 <span class="badge text-bg-success">Done</span>
                             {% else %}
                                 <span class="badge text-bg-warning">In Progress</span>
                             {% endif %}
+                            <div class="mt-1 text-muted" style="font-size: 0.7rem;">{{ sample.updated_at | format_datetime }}</div>
                         </td>
                         <td>{{ sample.progress_note or '-' }}</td>
-                        <td class="small text-secondary">{{ sample.created_by }}</td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-3">No samples logged yet.</td>
+                        <td colspan="5" class="text-center text-muted py-3">No samples logged yet.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -75,15 +96,15 @@
                 <div>
                     <label class="form-label d-block">LHA Status</label>
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input status-radio" type="radio" name="status" id="lhaDone" value="done" required>
-                        <label class="form-check-label" for="lhaDone">Done</label>
+                        <input class="form-check-input" type="radio" name="status" value="done" required>
+                        <label class="form-check-label">Done</label>
                     </div>
                     <div class="form-check form-check-inline">
-                        <input class="form-check-input status-radio" type="radio" name="status" id="lhaProg" value="progress">
-                        <label class="form-check-label" for="lhaProg">In Progress</label>
+                        <input class="form-check-input" type="radio" name="status" value="progress">
+                        <label class="form-check-label">In Progress</label>
                     </div>
                 </div>
-                <div class="progress-note-container" style="display: none;">
+                <div>
                     <label class="form-label">Progress Note</label>
                     <textarea class="form-control" name="progress_note" rows="2"></textarea>
                 </div>
@@ -95,13 +116,52 @@
     </div>
 </div>
 
-<script>
-    // Toggle progress textarea visibility based on radio selection
-    document.querySelectorAll('#addSampleModal .status-radio').forEach(radio => {
-        radio.addEventListener('change', function() {
-            const container = document.querySelector('#addSampleModal .progress-note-container');
-            container.style.display = this.value === 'progress' ? 'block' : 'none';
-        });
-    });
-</script>
+{% for sample in samples %}
+<div class="modal fade" id="editSampleModal{{ sample.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" method="post" action="{{ url_for('samples') }}">
+            <input type="hidden" name="action" value="edit">
+            <input type="hidden" name="id" value="{{ sample.id }}">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Sample</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body d-grid gap-3">
+                <div>
+                    <label class="form-label">Activity / Sample Name</label>
+                    <input type="text" class="form-control" name="sample_name" value="{{ sample.sample_name }}" required>
+                </div>
+                <div class="row">
+                    <div class="col-6">
+                        <label class="form-label">Handover Date</label>
+                        <input type="date" class="form-control" name="handover_date" value="{{ sample.handover_date }}" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Expected Result</label>
+                        <input type="date" class="form-control" name="expected_result_date" value="{{ sample.expected_result_date }}">
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label d-block">LHA Status</label>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="status" value="done" {% if sample.status == 'done' %}checked{% endif %} required>
+                        <label class="form-check-label">Done</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="status" value="progress" {% if sample.status == 'progress' %}checked{% endif %}>
+                        <label class="form-check-label">In Progress</label>
+                    </div>
+                </div>
+                <div>
+                    <label class="form-label">Progress Note</label>
+                    <textarea class="form-control" name="progress_note" rows="2">{{ sample.progress_note }}</textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-warning text-dark" type="submit">Update Sample</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
 {% endblock %}
