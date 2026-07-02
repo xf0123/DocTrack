@@ -1,6 +1,9 @@
 {% extends 'base.html' %}
 
+{% block body_class %}tracker-page-body{% endblock %}
+
 {% block content %}
+<div class="tracker-page">
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>Sample Tracker</h2>
     <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#addSampleModal">
@@ -30,8 +33,8 @@
     </div>
 </form>
 
-<div class="card bg-body-tertiary">
-    <div class="card-body">
+<div class="card bg-body-tertiary tracker-list-card">
+    <div class="card-body tracker-scroll-body">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0 table-sm-content">
                 <thead>
@@ -120,7 +123,6 @@
 <div class="modal fade" id="editSampleModal{{ sample.id }}" tabindex="-1">
     <div class="modal-dialog">
         <form class="modal-content" method="post" action="{{ url_for('samples') }}">
-            <input type="hidden" name="action" value="edit">
             <input type="hidden" name="id" value="{{ sample.id }}">
             <div class="modal-header">
                 <h5 class="modal-title">Edit Sample</h5>
@@ -158,10 +160,12 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-warning text-dark" type="submit">Update Sample</button>
+                <button class="btn btn-danger me-auto" type="submit" name="action" value="delete" formnovalidate onclick="return confirm('Delete this sample record?');">Delete</button>
+                <button class="btn btn-warning text-dark" type="submit" name="action" value="edit">Update Sample</button>
             </div>
         </form>
     </div>
 </div>
 {% endfor %}
+</div>
 {% endblock %}
