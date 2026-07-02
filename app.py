@@ -917,7 +917,7 @@ def logout():
     session.clear()
     flash("You have been logged out.", "info")
     # If your login page is called something else (like 'index'), change 'login' below to that name
-    return redirect(url_for("login"))
+    return redirect(url_for("dashboard"))
 
 if __name__ == "__main__":
     init_db()
