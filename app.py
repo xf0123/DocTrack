@@ -261,6 +261,28 @@ def inject_globals() -> dict[str, Any]:
 
 
 @app.route("/")
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    # If the user is already logged in, send them straight to the dashboard
+    if session.get("username"):
+        return redirect(url_for("dashboard"))
+
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        
+        db = get_db()
+        # Look up the user in the database
+        user = db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+        
+        if user and user["password"] == password:
+            session["username"] = user["username"]
+            return redirect(url_for("dashboard"))
+        else:
+            flash("Invalid username or password.", "danger")
+            
+    return render_template("login.html")
+
 @app.route("/dashboard")
 def dashboard():
     guard = login_required()
