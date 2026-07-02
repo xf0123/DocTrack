@@ -742,6 +742,9 @@ def executions():
                 (request.form.get("activity"), request.form.get("protocol"), request.form.get("date_start"), request.form.get("date_end"), request.form.get("status"), request.form.get("progress_note"), now_str, request.form.get("id"))
             )
             flash("Execution updated.", "success")
+        elif action == "delete":
+            db.execute("DELETE FROM executions WHERE id = ?", (request.form.get("id"),))
+            flash("Execution deleted.", "success")
             
         db.commit()
         return redirect(url_for("executions"))
@@ -791,6 +794,9 @@ def samples():
                 (request.form.get("sample_name"), request.form.get("handover_date"), request.form.get("expected_result_date"), request.form.get("status"), request.form.get("progress_note"), now_str, request.form.get("id"))
             )
             flash("Sample updated.", "success")
+        elif action == "delete":
+            db.execute("DELETE FROM samples WHERE id = ?", (request.form.get("id"),))
+            flash("Sample deleted.", "success")
             
         db.commit()
         return redirect(url_for("samples"))
