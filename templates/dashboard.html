@@ -18,12 +18,12 @@
     <div class="tab-pane fade show active" id="docs-tab">
         <div class="row">
             <div class="col-md-6 mb-3">
-                <div class="card h-100 bg-body-tertiary">
-                    <div class="card-body text-center pb-0 border-bottom">
+                <div class="card h-100 bg-body-tertiary dashboard-docs-card">
+                    <div class="card-body text-center border-bottom dashboard-docs-summary">
                         <h5 class="text-warning">On Circulation (Not Yet Approved)</h5>
                         <h1 class="display-3 fw-bold">{{ on_circulation|length }}</h1>
                     </div>
-                    <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+                    <div class="card-body p-0 dashboard-docs-table">
                         <table class="table table-hover table-sm m-0">
                             <thead class="table-dark" style="position: sticky; top: 0;">
                                 <tr><th>Doc #</th><th>Title</th><th>Since</th><th>Days</th></tr>
@@ -31,9 +31,9 @@
                             <tbody>
                                 {% for doc in on_circulation %}
                                 <tr>
-                                    <td>{{ doc.doc_number }}</td>
-                                    <td>{{ doc.subject }}</td>
-                                    <td>{{ (doc.date or doc.upload_date or doc.created_at) | format_date }}</td>
+                                    <td>{{ doc.doc_no }}</td>
+                                    <td>{{ doc.title }}</td>
+                                    <td>{{ doc.created_at | format_date }}</td>
                                     <td class="fw-bold text-warning">{{ doc.days }}</td>
                                 </tr>
                                 {% endfor %}
@@ -44,12 +44,12 @@
             </div>
 
             <div class="col-md-6 mb-3">
-                <div class="card h-100 bg-body-tertiary">
-                    <div class="card-body text-center pb-0 border-bottom">
+                <div class="card h-100 bg-body-tertiary dashboard-docs-card">
+                    <div class="card-body text-center border-bottom dashboard-docs-summary">
                         <h5 class="text-success">Approved, Not Yet Scanned</h5>
                         <h1 class="display-3 fw-bold">{{ approved_not_scanned|length }}</h1>
                     </div>
-                    <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+                    <div class="card-body p-0 dashboard-docs-table">
                         <table class="table table-hover table-sm m-0">
                             <thead class="table-dark" style="position: sticky; top: 0;">
                                 <tr><th>Doc #</th><th>Title</th><th>Approved On</th><th>Days</th></tr>
@@ -57,8 +57,8 @@
                             <tbody>
                                 {% for doc in approved_not_scanned %}
                                 <tr>
-                                    <td>{{ doc.doc_number }}</td>
-                                    <td>{{ doc.subject }}</td>
+                                    <td>{{ doc.doc_no }}</td>
+                                    <td>{{ doc.title }}</td>
                                     <td>{{ doc.approved_date | format_date }}</td>
                                     <td class="fw-bold text-success">{{ doc.days }}</td>
                                 </tr>
