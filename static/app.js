@@ -1,4 +1,10 @@
 document.addEventListener("DOMContentLoaded", () => {
+// Upgrade all datetime inputs to force 24-hour format
+  flatpickr("input[type='datetime-local']", {
+      enableTime: true,
+      dateFormat: "Y-m-d\\TH:i",
+      time_24hr: true
+  });  
   const statusForm = document.getElementById("statusForm");
   const modalLabel = document.getElementById("statusModalLabel");
   const statusButtons = document.querySelectorAll(".js-status-btn");
@@ -459,40 +465,50 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const container = document.getElementById("toastContainer");
     const toastHtml = `
-      <div id="toast-${rem.id}" class="toast show text-bg-warning mb-2" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
-        <div class="toast-header text-dark">
-          <strong class="me-auto">Reminder: ${rem.task}</strong>
-          <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+      <div id="toast-${rem.id}" class="toast show mb-2" style="background-color: #ffc107;" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
+        <div class="toast-header bg-dark text-white border-bottom border-secondary">
+          <strong class="me-auto" style="color: white;">Task Reminder: ${rem.task}</strong>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
         </div>
-        <div class="toast-body text-dark">
+        <div class="toast-body" style="color: black !important;">
           <div class="mt-2 d-flex gap-1 flex-wrap">
-            <button class="btn btn-sm btn-light" onclick="snoozeTask(${rem.id}, 1)">1 Day</button>
-            <button class="btn btn-sm btn-light" onclick="snoozeTask(${rem.id}, 3)">3 Days</button>
-            <button class="btn btn-sm btn-light" onclick="snoozeTask(${rem.id}, 7)">1 Wk</button>
-            <button class="btn btn-sm btn-light" onclick="snoozeTask(${rem.id}, 14)">2 Wk</button>
+            <button class="btn btn-sm btn-light" onclick="snoozeTask(${rem.id}, 1)">1 Hr</button>
+            <button class="btn btn-sm btn-light" onclick="snoozeTask(${rem.id}, 2)">2 Hr</button>
+            <button class="btn btn-sm btn-light" onclick="snoozeTask(${rem.id}, 4)">4 Hr</button>
+            <button class="btn btn-sm btn-light" onclick="snoozeTask(${rem.id}, 24)">1 Day</button>
+            <button class="btn btn-sm btn-light" onclick="snoozeTask(${rem.id}, 72)">3 Days</button>
+            <button class="btn btn-sm btn-light" onclick="snoozeTask(${rem.id}, 168)">1 Wk</button>
           </div>
         </div>
       </div>
     `;
     container.insertAdjacentHTML('beforeend', toastHtml);
   }
-});
+}); // End of DOMContentLoaded block
 
-// Made Global for inline onclick
-window.snoozeTask = function(taskId, days) {
+// Global Snooze Function
+window.snoozeTask = function(taskId, hoursToAdd) {
+    // 1. Get exact current time
     const newDate = new Date();
-    newDate.setDate(newDate.getDate() + days);
+    // 2. Add the selected hours to current time
+    newDate.setHours(newDate.getHours() + hoursToAdd);
+    
+    // 3. Format it correctly to your local time zone (YYYY-MM-DDTHH:MM)
+    const tzOffset = newDate.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(newDate - tzOffset)).toISOString().slice(0, 16);
     
     const formData = new FormData();
     formData.append("action", "snooze");
     formData.append("task_id", taskId);
-    formData.append("new_time", newDate.toISOString().slice(0, 16));
+    formData.append("new_time", localISOTime);
     
     fetch("/projects", { method: "POST", body: formData }).then(() => {
+        // Remove ONLY this specific popup window. Leave the rest alone.
         const toastEl = document.getElementById(`toast-${taskId}`);
         if (toastEl) {
             toastEl.remove();
         }
-        window.location.reload(); 
+        // Notice we REMOVED the automatic page reload here, 
+        // so the other notifications won't disappear.
     });
 }
