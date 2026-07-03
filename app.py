@@ -747,7 +747,11 @@ def projects():
             db.execute("UPDATE projects SET reminder_time = ? WHERE id = ?", (request.form.get("new_time"), request.form.get("task_id")))
             db.commit()
             return Response("OK", status=200)
-            
+        elif action == "dismiss_reminder":
+            task_id = request.form.get("task_id")
+            db.execute("UPDATE projects SET reminder_active = 0 WHERE id = ?", (task_id,))
+            flash("Reminder dismissed.", "success")
+
         db.commit()
         return redirect(url_for("projects"))
         

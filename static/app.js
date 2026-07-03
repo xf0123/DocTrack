@@ -486,14 +486,62 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 }); // End of DOMContentLoaded block
 
+// --- REMINDER SYSTEM ---
+  function fetchReminders() {
+      // Check for reminders in the background
+      fetch('/projects/reminders')
+          .then(res => {
+              if (!res.ok) throw new Error("Not logged in or error");
+              return res.json();
+          })
+          .then(data => {
+              if(data && data.reminders) {
+                  data.reminders.forEach(rem => triggerReminderToast(rem));
+              }
+          })
+          .catch(err => console.log("Reminder check skipped:", err));
+  }
+
+  function triggerReminderToast(rem) {
+    if(document.getElementById(`toast-${rem.id}`)) return; // Prevent duplicates
+
+    const container = document.getElementById("toastContainer");
+    if (!container) return;
+
+    // Fully Black & White version
+    const toastHtml = `
+      <div id="toast-${rem.id}" class="toast show mb-2 bg-dark text-white border border-secondary" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
+        <div class="toast-header bg-dark text-white border-bottom border-secondary">
+          <strong class="me-auto">Task Reminder: ${rem.task}</strong>
+          <!-- The close button now permanently dismisses the reminder -->
+          <button type="button" class="btn-close btn-close-white" onclick="dismissTask(${rem.id})"></button>
+        </div>
+        <div class="toast-body">
+          <div class="mt-2 d-flex gap-1 flex-wrap">
+            <button class="btn btn-sm btn-light text-dark" onclick="snoozeTask(${rem.id}, 1)">1 Hr</button>
+            <button class="btn btn-sm btn-light text-dark" onclick="snoozeTask(${rem.id}, 2)">2 Hr</button>
+            <button class="btn btn-sm btn-light text-dark" onclick="snoozeTask(${rem.id}, 4)">4 Hr</button>
+            <button class="btn btn-sm btn-light text-dark" onclick="snoozeTask(${rem.id}, 24)">1 Day</button>
+            <button class="btn btn-sm btn-light text-dark" onclick="snoozeTask(${rem.id}, 72)">3 Days</button>
+            <button class="btn btn-sm btn-light text-dark" onclick="snoozeTask(${rem.id}, 168)">1 Wk</button>
+          </div>
+        </div>
+      </div>
+    `;
+    container.insertAdjacentHTML('beforeend', toastHtml);
+  }
+
+  // 1. Run instantly when any page loads
+  fetchReminders();
+  // 2. Keep checking every 60 seconds
+  setInterval(fetchReminders, 60000);
+
+}); // End of DOMContentLoaded block
+
 // Global Snooze Function
 window.snoozeTask = function(taskId, hoursToAdd) {
-    // 1. Get exact current time
     const newDate = new Date();
-    // 2. Add the selected hours to current time
     newDate.setHours(newDate.getHours() + hoursToAdd);
-    
-    // 3. Format it correctly to your local time zone (YYYY-MM-DDTHH:MM)
     const tzOffset = newDate.getTimezoneOffset() * 60000;
     const localISOTime = (new Date(newDate - tzOffset)).toISOString().slice(0, 16);
     
@@ -503,12 +551,19 @@ window.snoozeTask = function(taskId, hoursToAdd) {
     formData.append("new_time", localISOTime);
     
     fetch("/projects", { method: "POST", body: formData }).then(() => {
-        // Remove ONLY this specific popup window. Leave the rest alone.
         const toastEl = document.getElementById(`toast-${taskId}`);
-        if (toastEl) {
-            toastEl.remove();
-        }
-        // Notice we REMOVED the automatic page reload here, 
-        // so the other notifications won't disappear.
+        if (toastEl) toastEl.remove();
+    });
+}
+
+// Global Dismiss Function (Attached to the 'X' Close button)
+window.dismissTask = function(taskId) {
+    const formData = new FormData();
+    formData.append("action", "dismiss_reminder");
+    formData.append("task_id", taskId);
+    
+    fetch("/projects", { method: "POST", body: formData }).then(() => {
+        const toastEl = document.getElementById(`toast-${taskId}`);
+        if (toastEl) toastEl.remove();
     });
 }
