@@ -281,37 +281,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }, { offset: Number.NEGATIVE_INFINITY }).element;
   }
-
-  // --- Background Reminder Poller ---
-  setInterval(checkReminders, 60000); // Check every minute
-  function checkReminders() {
-    fetch('/projects/reminders')
-      .then(r => r.json())
-      .then(data => {
-        data.reminders.forEach(rem => triggerReminderToast(rem));
-      });
-  }
-
-  function triggerReminderToast(rem) {
-    const container = document.getElementById("toastContainer");
-    const toastHtml = `
-      <div class="toast show text-bg-warning" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="toast-header text-dark">
-          <strong class="me-auto">Task Reminder</strong>
-          <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
-        </div>
-        <div class="toast-body text-dark">
-          ${rem.task}
-          <div class="mt-2">
-            <button class="btn btn-sm btn-light" onclick="snooze(${rem.id}, 1)">1 Day</button>
-            <button class="btn btn-sm btn-light" onclick="snooze(${rem.id}, 3)">3 Days</button>
-            <button class="btn btn-sm btn-light" onclick="snooze(${rem.id}, 7)">1 Week</button>
-          </div>
-        </div>
-      </div>
-    `;
-    container.insertAdjacentHTML('beforeend', toastHtml);
-  }
 });
 
 function snooze(taskId, days) {
@@ -360,30 +329,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             window.location.reload(); 
         });
-    }
-
-    // --- Updated Reminder Check (Isolating Toasts) ---
-    function triggerReminderToast(rem) {
-        if(document.getElementById(`toast-${rem.id}`)) return; // Prevent duplicates
-
-        const container = document.getElementById("toastContainer");
-        const toastHtml = `
-          <div id="toast-${rem.id}" class="toast show text-bg-warning mb-2" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
-            <div class="toast-header text-dark">
-              <strong class="me-auto">Reminder: ${rem.task}</strong>
-              <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
-            </div>
-            <div class="toast-body text-dark">
-              <div class="mt-2 d-flex gap-1 flex-wrap">
-                <button class="btn btn-sm btn-light" onclick="snooze(${rem.id}, 1)">1 Day</button>
-                <button class="btn btn-sm btn-light" onclick="snooze(${rem.id}, 3)">3 Days</button>
-                <button class="btn btn-sm btn-light" onclick="snooze(${rem.id}, 7)">1 Wk</button>
-                <button class="btn btn-sm btn-light" onclick="snooze(${rem.id}, 14)">2 Wk</button>
-              </div>
-            </div>
-          </div>
-        `;
-        container.insertAdjacentHTML('beforeend', toastHtml);
     }
 });
 
@@ -449,71 +394,34 @@ document.addEventListener("DOMContentLoaded", () => {
           new bootstrap.Tab(triggerEl).show();
       }
   }
-
-  // 3. Isolated Background Reminders
-  setInterval(checkReminders, 60000); 
-  function checkReminders() {
-    fetch('/projects/reminders')
-      .then(r => r.json())
-      .then(data => {
-        data.reminders.forEach(rem => triggerReminderToast(rem));
-      });
-  }
-
-  function triggerReminderToast(rem) {
-    if(document.getElementById(`toast-${rem.id}`)) return; // Prevent infinite duplicates
-
-    const container = document.getElementById("toastContainer");
-    const toastHtml = `
-      <div id="toast-${rem.id}" class="toast show mb-2" style="background-color: #ffc107;" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
-        <div class="toast-header bg-dark text-white border-bottom border-secondary">
-          <strong class="me-auto" style="color: white;">Task Reminder: ${rem.task}</strong>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
-        </div>
-        <div class="toast-body" style="color: black !important;">
-          <div class="mt-2 d-flex gap-1 flex-wrap">
-            <button class="btn btn-sm btn-light" onclick="snoozeTask(${rem.id}, 1)">1 Hr</button>
-            <button class="btn btn-sm btn-light" onclick="snoozeTask(${rem.id}, 2)">2 Hr</button>
-            <button class="btn btn-sm btn-light" onclick="snoozeTask(${rem.id}, 4)">4 Hr</button>
-            <button class="btn btn-sm btn-light" onclick="snoozeTask(${rem.id}, 24)">1 Day</button>
-            <button class="btn btn-sm btn-light" onclick="snoozeTask(${rem.id}, 72)">3 Days</button>
-            <button class="btn btn-sm btn-light" onclick="snoozeTask(${rem.id}, 168)">1 Wk</button>
-          </div>
-        </div>
-      </div>
-    `;
-    container.insertAdjacentHTML('beforeend', toastHtml);
-  }
 }); // End of DOMContentLoaded block
 
 // --- REMINDER SYSTEM ---
   function fetchReminders() {
-      // Check for reminders in the background
       fetch('/projects/reminders')
           .then(res => {
-              if (!res.ok) throw new Error("Not logged in or error");
+              if (!res.ok) throw new Error("Server returned an error: " + res.status);
               return res.json();
           })
-          .then(data => {
-              if(data && data.reminders) {
+          .then(data => {             
+              if(data && data.reminders && data.reminders.length > 0) {
                   data.reminders.forEach(rem => triggerReminderToast(rem));
+              } else {
               }
           })
-          .catch(err => console.log("Reminder check skipped:", err));
+          .catch(err => console.error("--- ERROR in fetchReminders: ---", err));
   }
 
   function triggerReminderToast(rem) {
-    if(document.getElementById(`toast-${rem.id}`)) return; // Prevent duplicates
+    if(document.getElementById(`toast-${rem.id}`)) return; 
 
     const container = document.getElementById("toastContainer");
     if (!container) return;
 
-    // Fully Black & White version
     const toastHtml = `
       <div id="toast-${rem.id}" class="toast show mb-2 bg-dark text-white border border-secondary" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
         <div class="toast-header bg-dark text-white border-bottom border-secondary">
-          <strong class="me-auto">Task Reminder: ${rem.task}</strong>
-          <!-- The close button now permanently dismisses the reminder -->
+          <strong class="me-auto text-white">Task Reminder: ${rem.task}</strong>
           <button type="button" class="btn-close btn-close-white" onclick="dismissTask(${rem.id})"></button>
         </div>
         <div class="toast-body">
@@ -536,9 +444,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // 2. Keep checking every 60 seconds
   setInterval(fetchReminders, 60000);
 
-}); // End of DOMContentLoaded block
-
-// Global Snooze Function
+// Global Snooze Function (Must be OUTSIDE the DOMContentLoaded block)
 window.snoozeTask = function(taskId, hoursToAdd) {
     const newDate = new Date();
     newDate.setHours(newDate.getHours() + hoursToAdd);
@@ -554,9 +460,9 @@ window.snoozeTask = function(taskId, hoursToAdd) {
         const toastEl = document.getElementById(`toast-${taskId}`);
         if (toastEl) toastEl.remove();
     });
-}
+};
 
-// Global Dismiss Function (Attached to the 'X' Close button)
+// Global Dismiss Function (Must be OUTSIDE the DOMContentLoaded block)
 window.dismissTask = function(taskId) {
     const formData = new FormData();
     formData.append("action", "dismiss_reminder");
@@ -566,4 +472,4 @@ window.dismissTask = function(taskId) {
         const toastEl = document.getElementById(`toast-${taskId}`);
         if (toastEl) toastEl.remove();
     });
-}
+};
