@@ -17,7 +17,10 @@
         {% set border_class = "reminder-gradient-none" %}
         {% if task.reminder_active and task.reminder_time %}
           {% set rem_date = datetime.fromisoformat(task.reminder_time) %}
-          {% set diff = (datetime.fromisoformat(task.due_date) - now).days %}
+          {% set diff = 999 %}
+          {% if task.due_date and task.due_date|trim != '' %}
+              {% set diff = (datetime.fromisoformat(task.due_date) - now).days %}
+          {% endif %}
           {% if diff >= 60 %}
               {% set border_class = "reminder-gradient-blue" %}
           {% elif diff >= 30 %}
