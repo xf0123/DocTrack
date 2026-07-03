@@ -194,8 +194,9 @@ def backup_database_if_needed() -> None:
         source_conn.close()
 
 
-def login_required() -> Any:
-    if "user_id" not in session:
+def login_required():
+    # Check for the key we set during login
+    if "username" not in session:
         return redirect(url_for("login"))
     return None
 
@@ -261,27 +262,46 @@ def inject_globals() -> dict[str, Any]:
 
 
 @app.route("/")
-@app.route("/login", methods=["GET","POST"])
+@app.route("/login", methods=["GET", "POST"])
+@app.route("/login", methods=["GET", "POST"])
 def login():
-    if session.get("username"):
-        return redirect (url_for("dashboard"))
+    # Only clear the session when you first load the page (GET request)
+    if request.method == "GET":
+        session.clear()
 
-    if request.method== "POST":
-        username = request.form.get ("username")
-        password = request.form.get ("password")
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        
+        print(f"\n--- 1. LOGIN ATTEMPT FOR: {username} ---")
+        
+        try:
+            db = get_db()
+            # Look for the user
+            user_row = db.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
 
-        db = get_db ()
-	
-        row = db.execute ("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
-
-        user = dict(row) if row else None
-
-        if user and user.get("password") == password:
-            session["username"] = user["username"]
-            return redirect (url_for("dashboard"))
-        else:
-            flash("Invalid username or password.", "danger")
-
+            if user_row:
+                user = dict(user_row)
+                # Use password_hash here instead of password
+                if check_password_hash(user.get("password_hash"), password):
+                    # Set the key used by login_required()
+                    session["username"] = user.get("username")
+                    # Also set these just in case other parts of your app use them
+                    session["user_id"] = user.get("id")
+                    
+                    print("--- LOGIN SUCCESS: Redirecting to dashboard ---")
+                    return redirect(url_for("dashboard"))
+                else:
+                    print("--- 3. FAILED: Password did not match database ---")
+                    flash("Invalid password.", "danger")
+            else:
+                print("--- 2. FAILED: User not found in database ---")
+                flash("User not found.", "danger")
+                
+        except Exception as e:
+            print(f"--- ERROR: Database crashed during login: {e} ---")
+            flash(f"Database Error: {e}", "danger")
+            
     return render_template("login.html")
 
 @app.route("/dashboard")
@@ -328,6 +348,9 @@ def dashboard():
                 
             d_dict['days'] = days
             approved_not_scanned.append(d_dict)
+
+    on_circulation.sort(key=lambda x: x['days'], reverse=True)
+    approved_not_scanned.sort(key=lambda x: x['days'], reverse=True)
 
     # 2. Execution Data
     executions_data = db.execute("SELECT * FROM executions ORDER BY date_start DESC").fetchall()

@@ -1,25 +1,27 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-5 col-lg-4">
-    <div class="card shadow-sm">
-      <div class="card-body p-4">
-        <h1 class="h4 mb-3 text-center">DocTrack Login</h1>
-        <form method="post" class="d-grid gap-3">
-          <div>
-            <label class="form-label">Username</label>
-            <input class="form-control" type="text" name="username" required />
-          </div>
-          <div>
-            <label class="form-label">Password</label>
-            <input class="form-control" type="password" name="password" required />
-          </div>
-          <button class="btn btn-primary" type="submit">Login</button>
-        </form>
-        <small class="text-body-secondary d-block mt-3">Default admin: <code>admin/admin123</code></small>
-      </div>
+<div class="row justify-content-center mt-5">
+    <div class="col-md-4">
+        <div class="card bg-body-tertiary">
+            <div class="card-body">
+                <h3 class="card-title text-center mb-4">DocTrack Login</h3>
+                
+                <!-- This form forces the POST action directly to the /login URL -->
+                <form method="POST" action="/login">
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        <input type="text" class="form-control" name="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-control" name="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Login</button>
+                </form>
+                
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 {% endblock %}
